@@ -1,64 +1,184 @@
+
+
+// import { useEffect, useState } from "react";
+// import ChatListItem from "./ChatListItem";
+// import { fetchUsersForChat } from "../services/chatAPI";
+
+// const ChatList = ({ onSelectDriver }) => {
+//   const [drivers, setDrivers] = useState([]);
+//   const [search, setSearch] = useState("");
+
+//   useEffect(() => {
+//     loadDrivers();
+//   }, []);
+
+//   async function loadDrivers() {
+//     const res = await fetchUsersForChat();
+
+//     const mapped =
+//       res?.users?.map((u) => ({
+//         userid: u.userid,
+//         driver_name: u.name || u.driver_name,
+//         driver_image: u.profilePic || u.image || null,
+//       })) || [];
+
+//     setDrivers(mapped);
+//   }
+
+//   const filtered = drivers.filter((d) =>
+//     d.driver_name?.toLowerCase().includes(search.toLowerCase())
+//   );
+
+//   return (
+//     <div className="h-full flex flex-col">
+
+//       {/* SEARCH BAR (STICKY) */}
+//       <div className="p-3 border-b border-gray-700 sticky top-0 bg-[#0d1117] z-20">
+//         <input
+//           type="text"
+//           placeholder="Search drivers..."
+//           className="w-full p-2 bg-[#1f2937] rounded outline-none"
+//           value={search}
+//           onChange={(e) => setSearch(e.target.value)}
+//         />
+//       </div>
+
+//       {/* DRIVER LIST (SCROLL ONLY THIS) */}
+//       <div className="flex-1 overflow-y-auto">
+//         {filtered.map((driver) => (
+//           <ChatListItem
+//             key={driver.userid}
+//             driver={driver}
+//             onClick={() => onSelectDriver(driver)}
+//           />
+//         ))}
+//       </div>
+
+//     </div>
+//   );
+// };
+
+// export default ChatList;
+
+
+
 import { useEffect, useState } from "react";
-import ChatUserCard from "./ChatUserCard";
+import ChatListItem from "./ChatListItem";
+import {
+  fetchUsersForChat,
+  fetchMessages,
+} from "../services/chatAPI";
 
-const ChatList = () => {
+const ChatList = ({ onSelectDriver }) => {
   const [drivers, setDrivers] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  // Fetch from Backend
-  const fetchChats = async () => {
+  useEffect(() => {
+    loadDrivers();
+  }, []);
+
+  async function loadDrivers() {
     try {
-      const res = await fetch("http://localhost:5000/api/chats");
-      const data = await res.json();
-      setDrivers(data);
-    } catch (error) {
-      console.error("Error fetching chat list:", error);
+      setLoading(true);
+
+      const res = await fetchUsersForChat();
+
+      if (!res?.users?.length) {
+        setDrivers([]);
+        return;
+      }
+
+      // 🔥 Attach last message to each user
+      const withLastChat = await Promise.all(
+        res.users.map(async (u) => {
+          try {
+            const chat = await fetchMessages(u.userid);
+            const msgs = chat?.messages || [];
+            const lastMsg = msgs[msgs.length - 1];
+
+            return {
+              userid: u.userid,
+              driver_name: u.name || u.driver_name,
+              driver_image: u.profilePic || u.image || null,
+               lastSeen: u.lastSeen || null,
+              last_message: lastMsg?.content?.message || "",
+              last_chat_time: lastMsg?.dateTime || null,
+            };
+          } catch {
+            return {
+              userid: u.userid,
+              driver_name: u.name || u.driver_name,
+              driver_image: u.profilePic || u.image || null,
+              last_message: "",
+              last_chat_time: null,
+            };
+          }
+        })
+      );
+
+      // 🔥 SORT → latest chat first
+      withLastChat.sort((a, b) => {
+        if (!a.last_chat_time) return 1;
+        if (!b.last_chat_time) return -1;
+        return (
+          new Date(b.last_chat_time).getTime() -
+          new Date(a.last_chat_time).getTime()
+        );
+      });
+
+      setDrivers(withLastChat);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  useEffect(() => {
-    fetchChats();
-  }, []);
-
-  // Search Filter
-  const filteredDrivers = drivers.filter((d) =>
-    d.name.toLowerCase().includes(search.toLowerCase())
+  const filtered = drivers.filter((d) =>
+    d.driver_name?.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
-    <div className="p-4">
-      {/* Search Bar */}
-      <div className="bg-[#1f2937] p-3 rounded-2xl flex items-center gap-3 mb-4">
-        <span className="text-xl">🚚</span>
+    <div className="h-full flex flex-col">
+
+      {/* 🔍 SEARCH BAR (STICKY) */}
+      <div className="p-3 border-b border-gray-700 sticky top-0 bg-[#0d1117] z-20">
         <input
           type="text"
-          placeholder="Search Drivers"
-          className="bg-transparent outline-none w-full text-white"
+          placeholder="Search drivers..."
+          className="w-full p-2 bg-[#1f2937] rounded outline-none"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <span>🔍</span>
       </div>
 
-      {/* Loader */}
-      {loading && (
-        <p className="text-center text-gray-400 mt-6">Loading chats...</p>
-      )}
+      {/* 📜 DRIVER LIST (ONLY THIS SCROLLS) */}
+      {/* <div className="flex-1 overflow-y-auto"> */}
+      <div className="flex-1 overflow-y-auto chat-list-scroll">
 
-      {/* Driver Cards */}
-      {!loading && filteredDrivers.length === 0 && (
-        <p className="text-center text-gray-500 mt-6">No chats found</p>
-      )}
+        {loading && (
+          <p className="text-center text-gray-500 text-sm mt-4">
+            Loading chats...
+          </p>
+        )}
 
-      <div className="mt-2 space-y-3 overflow-y-auto h-[82vh] pr-1">
         {!loading &&
-          filteredDrivers.map((d) => <ChatUserCard key={d.id} data={d} />)}
+          filtered.map((driver) => (
+            <ChatListItem
+              key={driver.userid}
+              driver={driver}
+              onClick={() => onSelectDriver(driver)}
+            />
+          ))}
+
+        {!loading && filtered.length === 0 && (
+          <p className="text-center text-gray-500 text-sm mt-4">
+            No drivers found
+          </p>
+        )}
       </div>
     </div>
   );
 };
 
 export default ChatList;
+

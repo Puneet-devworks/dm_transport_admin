@@ -57,7 +57,7 @@ import Login from "./pages/Login";
 import Sidebar from "./components/Sidebar";
 import Navbar from "./components/Navbar";
 import Dashboard from "./pages/Dashboard";
-import Chat from "./pages/chat";
+import Chat from "./pages/Chat";
 import Documents from "./pages/Document";
 
 export default function App() {
