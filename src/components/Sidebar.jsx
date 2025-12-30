@@ -1,5 +1,53 @@
+// import { Link, useLocation } from "react-router-dom";
+
+// const menuItems = [
+//   { title: "Home", icon: "🏠", path: "/" },
+//   { title: "Documents", icon: "📁", path: "/documents" },
+//   { title: "Chat", icon: "💬", badge: 12, path: "/chat" },
+//   { title: "Maintenance Chat", icon: "🛠", badge: 1, path: "/maintenance-chat" },
+//   { title: "Drivers", icon: "🚚", path: "/drivers" },
+//   { title: "Admins", icon: "👤", path: "/admins" },
+//   { title: "Note", icon: "📄", path: "/note" },
+// ];
+
+// export default function Sidebar() {
+//   const location = useLocation();
+
+//   return (
+//     <div className="w-20 bg-[#161b22] p-4 flex flex-col items-center gap-6 border-r border-gray-700">
+//       <h1 className="text-lg font-bold text-center">DM</h1>
+
+//       {menuItems.map((item) => {
+//         const isActive = location.pathname === item.path;
+
+//         return (
+//           <Link
+//             to={item.path}
+//             key={item.title}
+//             className={`relative text-center cursor-pointer p-2 rounded-lg transition
+//               ${isActive ? "bg-gray-700" : "hover:bg-gray-800"}
+//             `}
+//           >
+//             <span className="text-2xl">{item.icon}</span>
+
+//             {item.badge && (
+//               <span className="absolute -top-1 -right-1 text-xs bg-red-500 px-1 rounded-full">
+//                 {item.badge}
+//               </span>
+//             )}
+
+//             <p className="text-[10px] mt-1 opacity-80">{item.title}</p>
+//           </Link>
+//         );
+//       })}
+//     </div>
+//   );
+// }
+
+import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
+  Bell,
   Folder,
   MessageCircle,
   Wrench,
@@ -38,6 +86,27 @@ const menuSections = [
 
 export default function Sidebar() {
   const location = useLocation();
+  const [notifications, setNotifications] = useState([
+    {
+      id: "notif-1",
+      title: "Chat escalation",
+      detail: "3 new escalations need review",
+      time: "2m ago",
+    },
+    {
+      id: "notif-2",
+      title: "Document upload",
+      detail: "12 manifests pending approval",
+      time: "18m ago",
+    },
+    {
+      id: "notif-3",
+      title: "System update",
+      detail: "Nightly sync completed",
+      time: "1h ago",
+    },
+  ]);
+  const unreadCount = useMemo(() => notifications.length, [notifications]);
 
   return (
     <aside className="flex h-screen w-64 flex-col border-r border-slate-800 bg-slate-950 text-slate-100">
@@ -87,6 +156,52 @@ export default function Sidebar() {
             </div>
           </div>
         ))}
+
+        <div className="space-y-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
+              <Bell className="h-4 w-4 text-slate-400" />
+              Notifications
+              {unreadCount > 0 && (
+                <span className="rounded-full bg-rose-500/20 px-2 py-0.5 text-xs text-rose-200">
+                  {unreadCount}
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setNotifications([])}
+              className="text-xs font-semibold text-slate-400 transition hover:text-slate-200"
+            >
+              Clear
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            {notifications.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-slate-800 px-3 py-4 text-xs text-slate-500">
+                You&apos;re all caught up.
+              </p>
+            ) : (
+              notifications.map((notification) => (
+                <div
+                  key={notification.id}
+                  className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-semibold text-slate-200">
+                      {notification.title}
+                    </p>
+                    <span className="text-[10px] uppercase tracking-wide text-slate-500">
+                      {notification.time}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400">{notification.detail}</p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="border-t border-slate-800 px-4 py-4">
