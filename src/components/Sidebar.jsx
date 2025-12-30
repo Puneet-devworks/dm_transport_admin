@@ -44,7 +44,7 @@
 //   );
 // }
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Bell,
@@ -86,6 +86,8 @@ const menuSections = [
 
 export default function Sidebar() {
   const location = useLocation();
+  const [open, setOpen] = useState(false);
+  const [user, setUser] = useState(null);
   const [notifications, setNotifications] = useState([
     {
       id: "notif-1",
@@ -107,6 +109,19 @@ export default function Sidebar() {
     },
   ]);
   const unreadCount = useMemo(() => notifications.length, [notifications]);
+
+  useEffect(() => {
+    const savedUser = localStorage.getItem("adminUser");
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
+  }, []);
+
+  function handleLogout() {
+    localStorage.removeItem("adminToken");
+    localStorage.removeItem("adminUser");
+    window.location.href = "/login";
+  }
 
   return (
     <aside className="flex h-screen w-64 flex-col border-r border-slate-800 bg-slate-950 text-slate-100">
@@ -205,7 +220,7 @@ export default function Sidebar() {
       </div>
 
       <div className="border-t border-slate-800 px-4 py-4">
-        <div className="flex items-center gap-3 rounded-lg bg-slate-900 px-3 py-3">
+        <div className="relative flex items-center gap-3 rounded-lg bg-slate-900 px-3 py-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-800">
             <ShieldCheck className="h-5 w-5 text-slate-200" />
           </div>
@@ -216,9 +231,27 @@ export default function Sidebar() {
           <button
             className="rounded-md border border-slate-700 p-2 text-slate-300 transition hover:border-slate-500 hover:text-white"
             type="button"
+            onClick={() => setOpen((prev) => !prev)}
           >
             <Settings className="h-4 w-4" />
           </button>
+          {open && (
+            <div className="absolute bottom-16 right-0 w-56 rounded-lg border border-slate-700 bg-slate-950 p-2 shadow-xl">
+              <p className="px-3 pb-2 text-xs text-slate-400">Logged in as</p>
+              <p className="px-3 pb-2 text-sm font-semibold text-slate-100">
+                {user?.userid || "Admin"}
+              </p>
+              <button className="w-full rounded-md px-3 py-2 text-left text-sm text-slate-300 transition hover:bg-slate-900 hover:text-white">
+                Change Password
+              </button>
+              <button
+                onClick={handleLogout}
+                className="w-full rounded-md px-3 py-2 text-left text-sm text-rose-300 transition hover:bg-rose-500/20 hover:text-rose-200"
+              >
+                Logout
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </aside>

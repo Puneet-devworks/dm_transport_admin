@@ -55,7 +55,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useState, useEffect } from "react";
 import Login from "./pages/Login";
 import Sidebar from "./components/Sidebar";
-import Navbar from "./components/Navbar";
 import Dashboard from "./pages/Dashboard";
 import Chat from "./pages/Chat";
 import Documents from "./pages/Document";
@@ -75,19 +74,12 @@ export default function App() {
         <div className="flex bg-[#101418] text-white min-h-screen">
           <Sidebar />
 
-          <div className="flex-1 relative">
-            <div className="fixed top-0 left-64 right-0 z-50">
-              <Navbar />
-            </div>
-
-            <div className="pt-[70px] h-screen overflow-y-auto">
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/chat" element={<Chat />} />
-                <Route path="/maintenance-chat" element={<MaintenanceChat />} />
-                <Route path="/documents" element={<Documents />} />
-              </Routes>
-            </div>
+          <div className="flex-1 h-screen overflow-y-auto">
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/chat" element={<Chat />} />
+              <Route path="/documents" element={<Documents />} />
+            </Routes>
           </div>
         </div>
       ) : (
