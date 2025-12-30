@@ -58,7 +58,7 @@ import {
   Settings,
   ShieldCheck,
   ChevronLeft,
-  ChevronRight,
+  Menu,
 } from "lucide-react";
 
 const menuSections = [
@@ -90,6 +90,7 @@ export default function Sidebar() {
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [showMenuIcon, setShowMenuIcon] = useState(false);
   const [user, setUser] = useState(null);
   const [notifications, setNotifications] = useState([
     {
@@ -120,6 +121,19 @@ export default function Sidebar() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!isCollapsed) {
+      setShowMenuIcon(false);
+      return undefined;
+    }
+
+    const interval = setInterval(() => {
+      setShowMenuIcon((prev) => !prev);
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [isCollapsed]);
+
   function handleLogout() {
     localStorage.removeItem("adminToken");
     localStorage.removeItem("adminUser");
@@ -132,10 +146,32 @@ export default function Sidebar() {
         isCollapsed ? "w-20" : "w-64"
       }`}
     >
-      <div className="flex items-center justify-between gap-3 border-b border-slate-800 px-4 py-5">
+      <div className="relative flex items-center justify-between gap-3 border-b border-slate-800 px-4 py-5">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800 text-lg font-semibold">
-            DM
+          <div className="relative h-10 w-10">
+            <div
+              className={`flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800 text-lg font-semibold transition-opacity duration-[2000ms] ${
+                isCollapsed ? "opacity-0" : "opacity-100"
+              }`}
+            >
+              DM
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsCollapsed((prev) => !prev)}
+              className={`absolute inset-0 flex items-center justify-center rounded-lg border border-slate-700 bg-slate-800 text-sm font-semibold text-slate-100 shadow-sm transition-all duration-[2000ms] ${
+                isCollapsed
+                  ? "scale-100 opacity-100"
+                  : "scale-90 opacity-0 pointer-events-none"
+              }`}
+              aria-label="Expand sidebar"
+            >
+              {showMenuIcon ? (
+                <Menu className="h-5 w-5" />
+              ) : (
+                <span className="text-base">DM</span>
+              )}
+            </button>
           </div>
           <div className={`${isCollapsed ? "hidden" : "flex"} flex-col`}>
             <span className="text-sm font-semibold">DM Transport</span>
@@ -145,14 +181,12 @@ export default function Sidebar() {
         <button
           type="button"
           onClick={() => setIsCollapsed((prev) => !prev)}
-          className="rounded-md border border-slate-800 p-1.5 text-slate-300 transition hover:border-slate-600 hover:text-white"
-          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className={`rounded-md border border-slate-800 p-1.5 text-slate-300 transition-all duration-[2000ms] hover:border-slate-600 hover:text-white ${
+            isCollapsed ? "opacity-0 pointer-events-none" : "opacity-100"
+          }`}
+          aria-label="Collapse sidebar"
         >
-          {isCollapsed ? (
-            <ChevronRight className="h-4 w-4" />
-          ) : (
-            <ChevronLeft className="h-4 w-4" />
-          )}
+          <ChevronLeft className="h-4 w-4" />
         </button>
       </div>
 
