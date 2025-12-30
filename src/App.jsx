@@ -58,6 +58,7 @@ import Sidebar from "./components/Sidebar";
 import Dashboard from "./pages/Dashboard";
 import Chat from "./pages/Chat";
 import Documents from "./pages/Document";
+import MaintenanceChat from "./pages/MaintenanceChat";
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
