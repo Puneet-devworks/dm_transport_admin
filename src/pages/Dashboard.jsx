@@ -7,29 +7,29 @@ const summaryStats = [
   { label: "Response Time", value: "4m 12s", trend: "Within SLA" },
 ];
 
-const milestones = [
+const analyticsInsights = [
   {
-    title: "Milestone 1: React Rebuild",
-    progress: 78,
-    items: [
-      "Freeze & lag fixes",
-      "Chat badge accuracy",
-      "Document filters & sorting",
-    ],
+    title: "Chat Intelligence",
+    description: "Analyze chat messages across the panel in real time.",
+    tag: "AI Analytics",
   },
   {
-    title: "Milestone 2: Broadcast + Archival",
-    progress: 45,
-    items: [
-      "Broadcast composer",
-      "Chat notifications",
-      "Data retention controls",
-    ],
+    title: "Tone & Language Review",
+    description:
+      "Evaluate tone and language used by drivers and employees.",
+    tag: "Quality",
   },
   {
-    title: "Milestone 3: Responsive + Themes",
-    progress: 22,
-    items: ["Sidebar collapse", "Adaptive tables", "Theme toggles"],
+    title: "Response Risk Detection",
+    description:
+      "Detect delayed responses and inappropriate or unprofessional language.",
+    tag: "Compliance",
+  },
+  {
+    title: "Operational Reports",
+    description:
+      "Generate driver responsiveness and communication quality reports.",
+    tag: "Reporting",
   },
 ];
 
@@ -45,12 +45,6 @@ const documents = [
   { title: "Trip Envelopes (DM Trans)", count: 0, priority: "Low" },
   { title: "Repair & Maintenance", count: 69, priority: "Normal" },
   { title: "CTPAT", count: 61, priority: "Normal" },
-];
-
-const quickActions = [
-  { title: "Broadcast Message", description: "Send updates to multiple drivers." },
-  { title: "Review Chat Alerts", description: "Resolve new escalations." },
-  { title: "Verify Documents", description: "Approve or reject pending uploads." },
 ];
 
 export default function Dashboard() {
@@ -107,72 +101,37 @@ export default function Dashboard() {
         ))}
       </section>
 
-      <section className="grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-6">
-        <div className="bg-[#11161c] border border-gray-700 rounded-2xl p-6">
-          <div className="flex items-center justify-between">
+      <section className="bg-[#11161c] border border-gray-700 rounded-2xl p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
             <h3 className="text-lg font-semibold text-gray-100">
-              Milestone Progress
+              AI Analytics Readiness
             </h3>
-            <span className="text-xs text-gray-500">
-              Agreement-aligned delivery
-            </span>
+            <p className="text-sm text-gray-400">
+              Panel-specific intelligence cards aligned with the agreement.
+            </p>
           </div>
-          <div className="mt-5 space-y-5">
-            {milestones.map((milestone) => (
-              <div key={milestone.title} className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-gray-200">
-                    {milestone.title}
-                  </p>
-                  <span className="text-xs text-gray-400">
-                    {milestone.progress}%
-                  </span>
-                </div>
-                <div className="h-2 w-full bg-gray-800 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-emerald-500 rounded-full"
-                    style={{ width: `${milestone.progress}%` }}
-                  />
-                </div>
-                <ul className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs text-gray-400">
-                  {milestone.items.map((item) => (
-                    <li
-                      key={item}
-                      className="bg-[#161b22] border border-gray-800 rounded-lg px-3 py-2"
-                    >
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
+          <span className="text-xs text-emerald-400 font-medium">
+            Milestone 4 preview
+          </span>
         </div>
-
-        <div className="bg-[#11161c] border border-gray-700 rounded-2xl p-6 space-y-5">
-          <h3 className="text-lg font-semibold text-gray-100">Quick Actions</h3>
-          <div className="space-y-4">
-            {quickActions.map((action) => (
-              <div
-                key={action.title}
-                className="bg-[#161b22] border border-gray-800 rounded-xl p-4"
-              >
-                <p className="text-sm font-medium text-gray-100">
-                  {action.title}
+        <div className="mt-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          {analyticsInsights.map((insight) => (
+            <div
+              key={insight.title}
+              className="bg-[#161b22] border border-gray-800 rounded-xl p-4 space-y-3"
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-gray-100">
+                  {insight.title}
                 </p>
-                <p className="text-xs text-gray-400 mt-1">
-                  {action.description}
-                </p>
-                <button className="mt-3 text-xs font-semibold text-emerald-400">
-                  View details →
-                </button>
+                <span className="text-[10px] uppercase tracking-wide px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-300">
+                  {insight.tag}
+                </span>
               </div>
-            ))}
-          </div>
-          <div className="bg-gradient-to-r from-emerald-500/20 to-transparent border border-emerald-600/40 rounded-xl p-4 text-sm text-gray-200">
-            AI Analytics launch is scheduled for Milestone 4. Prepare your team
-            by tagging driver conversations for sentiment tracking.
-          </div>
+              <p className="text-xs text-gray-400">{insight.description}</p>
+            </div>
+          ))}
         </div>
       </section>
 
