@@ -559,8 +559,8 @@ export default function Admins() {
         </div>
       )}
 
-      <div className="grid flex-1 gap-6 overflow-hidden lg:grid-cols-[320px_1fr]">
-        <div className="flex flex-col rounded-2xl border border-slate-800 bg-[#151a1f] p-4 shadow-lg">
+      <div className="grid flex-1 min-h-0 gap-6 overflow-hidden lg:grid-cols-[320px_1fr]">
+        <div className="flex min-h-0 flex-col rounded-2xl border border-slate-800 bg-[#151a1f] p-4 shadow-lg">
           <div className="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-3 py-2">
             <Search className="h-4 w-4 text-slate-400" />
             <input
@@ -621,7 +621,7 @@ export default function Admins() {
           </div>
         </div>
 
-        <div className="flex flex-col rounded-2xl border border-slate-800 bg-[#151a1f] px-6 py-5 shadow-lg">
+        <div className="flex min-h-0 flex-col rounded-2xl border border-slate-800 bg-[#151a1f] px-6 py-5 shadow-lg">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-800 text-sm font-semibold">
