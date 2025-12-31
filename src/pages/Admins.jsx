@@ -110,6 +110,9 @@ const normalizeAdmins = (payload) => {
     .filter((admin) => admin.name);
 };
 
+const ADMIN_CACHE_KEY = "dm_admins_cache_v1";
+const ADMIN_CACHE_TTL_MS = 5 * 60 * 1000;
+
 export default function Admins() {
   const [query, setQuery] = useState("");
   const [admins, setAdmins] = useState([]);
@@ -140,6 +143,25 @@ export default function Admins() {
     let isMounted = true;
     async function loadAdmins() {
       try {
+        const cached = localStorage.getItem(ADMIN_CACHE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Date.now() - parsed.timestamp < ADMIN_CACHE_TTL_MS) {
+            const cachedAdmins = normalizeAdmins(parsed.data);
+            if (cachedAdmins.length > 0) {
+              setAdmins(cachedAdmins);
+              setSelectedAdmin(cachedAdmins[0]?.name || "");
+              setAdminPermissions(
+                cachedAdmins.reduce((acc, admin) => {
+                  acc[admin.name] = buildPermissionsForAdmin(admin.name);
+                  return acc;
+                }, {})
+              );
+              setIsLoading(false);
+            }
+          }
+        }
+
         setIsLoading(true);
         const response = await fetchAdmins();
         if (!isMounted) return;
@@ -151,6 +173,10 @@ export default function Admins() {
             acc[admin.name] = buildPermissionsForAdmin(admin.name);
             return acc;
           }, {})
+        );
+        localStorage.setItem(
+          ADMIN_CACHE_KEY,
+          JSON.stringify({ timestamp: Date.now(), data: response })
         );
         setError("");
       } catch (err) {
@@ -533,8 +559,8 @@ export default function Admins() {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-        <div className="rounded-2xl border border-slate-800 bg-[#151a1f] p-4 shadow-lg">
+      <div className="grid h-[calc(100vh-190px)] gap-6 lg:grid-cols-[320px_1fr]">
+        <div className="flex flex-col rounded-2xl border border-slate-800 bg-[#151a1f] p-4 shadow-lg">
           <div className="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-3 py-2">
             <Search className="h-4 w-4 text-slate-400" />
             <input
@@ -545,9 +571,9 @@ export default function Admins() {
             />
           </div>
 
-          <div className="mt-4">
+          <div className="mt-4 flex flex-1 flex-col overflow-y-auto">
             <p className="text-sm text-slate-400">Admins</p>
-            <div className="mt-3 space-y-1">
+            <div className="mt-3 space-y-1 pr-1">
               {isLoading ? (
                 <div className="rounded-lg border border-dashed border-slate-700 px-4 py-6 text-center text-sm text-slate-500">
                   Loading admins...
@@ -584,10 +610,18 @@ export default function Admins() {
                 ))
               )}
             </div>
+            {!isLoading && !error && (
+              <div className="mt-4 border-t border-slate-800 pt-3 text-xs text-slate-400">
+                Total admins:{" "}
+                <span className="font-semibold text-slate-200">
+                  {filteredAdmins.length}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-800 bg-[#151a1f] px-6 py-5 shadow-lg">
+        <div className="flex flex-col rounded-2xl border border-slate-800 bg-[#151a1f] px-6 py-5 shadow-lg">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-800 text-sm font-semibold">
@@ -638,7 +672,7 @@ export default function Admins() {
             Permissions
           </div>
 
-          <div className="mt-4 space-y-6">
+          <div className="mt-4 flex-1 space-y-6 overflow-y-auto pr-1">
             {permissionSections.map((section) => (
               <div key={section.title}>
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
