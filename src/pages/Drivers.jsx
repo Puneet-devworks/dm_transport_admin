@@ -227,10 +227,9 @@ export default function Drivers() {
   }, [driverData]);
 
   useEffect(() => {
-    if (driverData.length > 0) {
-      setDrivers(mergedDrivers);
-    }
-  }, [driverData, mergedDrivers]);
+    if (isLoading || isError) return;
+    setDrivers(mergedDrivers);
+  }, [isLoading, isError, mergedDrivers]);
 
   useEffect(() => {
     if (drivers.length === 0) return;
