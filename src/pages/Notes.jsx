@@ -298,7 +298,7 @@ export default function Notes() {
         <div
           ref={listRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto rounded-2xl border border-gray-800 bg-[#0f131a] px-4 py-6"
+          className="flex-1 max-h-[65vh] overflow-y-auto rounded-2xl border border-gray-800 bg-[#0f131a] px-4 py-6"
         >
           {groupedMessages.length === 0 ? (
             <div className="flex h-full items-center justify-center text-sm text-gray-500">
