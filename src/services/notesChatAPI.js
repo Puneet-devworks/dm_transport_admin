@@ -67,6 +67,7 @@ export const subscribeNotesMessages = ({
       onChange(messages);
     },
     (error) => {
+      console.error("[Notes] subscribe error", error);
       if (onError) {
         onError(error);
       }
