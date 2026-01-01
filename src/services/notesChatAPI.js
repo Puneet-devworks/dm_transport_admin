@@ -177,7 +177,24 @@ export const addReaction = async ({ messageId, emoji, userId }) => {
 
 export const uploadNotesAttachment = async (file, type) => {
   void type;
-  await ensureAnonymousAuth();
+  try {
+    await ensureAnonymousAuth();
+  } catch (error) {
+    const errorCode = error?.code || "";
+    const errorMessage = error?.message || "";
+    const isAdminOnly =
+      errorCode === "auth/admin-restricted-operation" ||
+      errorMessage.includes("ADMIN_ONLY_OPERATION");
+
+    if (!isAdminOnly) {
+      throw error;
+    }
+
+    console.warn(
+      "[Notes] Anonymous auth disabled; continuing without sign-in.",
+      error
+    );
+  }
   const safeName = file?.name || "file";
   const storageRef = ref(storage, `uploads/${Date.now()}_${safeName}`);
   const uploadTask = uploadBytesResumable(storageRef, file);
