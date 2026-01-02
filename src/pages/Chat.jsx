@@ -9,7 +9,10 @@ const Chat = () => {
     <div className="flex w-full h-full bg-[#0d1117] text-white overflow-hidden">
       {/* LEFT CHAT LIST (FIXED WIDTH + STICKY) */}
       <div className="w-[320px] min-w-[280px] max-w-[340px] border-r border-gray-700 h-full overflow-hidden">
-        <ChatList onSelectDriver={setSelectedDriver} />
+        <ChatList
+          onSelectDriver={setSelectedDriver}
+          selectedDriver={selectedDriver}
+        />
       </div>
 
       {/* RIGHT CHAT WINDOW (TAKES REST SPACE) */}

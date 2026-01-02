@@ -26,7 +26,7 @@
 
 // export default ChatListItem;
 
-const ChatListItem = ({ driver, onClick }) => {
+const ChatListItem = ({ driver, onClick, isSelected }) => {
   const time = driver.last_chat_time
     ? new Date(driver.last_chat_time).toLocaleDateString("en-GB", {
         day: "2-digit",
@@ -37,7 +37,9 @@ const ChatListItem = ({ driver, onClick }) => {
   return (
     <div
       onClick={onClick}
-      className="flex items-center gap-3 p-3 cursor-pointer hover:bg-[#1b222c]"
+      className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-[#1b222c] ${
+        isSelected ? "bg-[#1b222c]" : ""
+      }`}
     >
       <img
         src={driver.driver_image || "/default-user.png"}
@@ -62,5 +64,4 @@ const ChatListItem = ({ driver, onClick }) => {
 };
 
 export default ChatListItem;
-
 
