@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import ChatListItem from "./ChatListItem";
 import {
   fetchUsersForChat as defaultFetchUsersForChat,
-  fetchMessages as defaultFetchMessages,
 } from "../services/chatAPI";
 import SkeletonLoader from "./skeletons/Skeleton";
 
@@ -10,9 +9,8 @@ const ChatList = ({ onSelectDriver, selectedDriver, chatApi }) => {
   const [drivers, setDrivers] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
-  const { fetchUsersForChat, fetchMessages } = chatApi || {
+  const { fetchUsersForChat } = chatApi || {
     fetchUsersForChat: defaultFetchUsersForChat,
-    fetchMessages: defaultFetchMessages,
   };
 
   function getDriverId(driver) {
@@ -47,38 +45,23 @@ const ChatList = ({ onSelectDriver, selectedDriver, chatApi }) => {
         return;
       }
 
-      // 🔥 Attach last message to each user
-      const withLastChat = await Promise.all(
-        res.users.map(async (u) => {
+      const withLastChat = res.users
+        .map((u) => {
           const userId = getDriverId(u);
           if (!userId) {
             return null;
           }
 
-          try {
-            const chat = await fetchMessages(userId);
-            const msgs = chat?.messages || [];
-            const lastMsg = msgs[msgs.length - 1];
-
-            return {
-              userid: userId,
-              driver_name: u.name || u.driver_name,
-              driver_image: u.profilePic || u.image || null,
-              lastSeen: u.lastSeen || null,
-              last_message: lastMsg?.content?.message || "",
-              last_chat_time: lastMsg?.dateTime || null,
-            };
-          } catch {
-            return {
-              userid: userId,
-              driver_name: u.name || u.driver_name,
-              driver_image: u.profilePic || u.image || null,
-              last_message: "",
-              last_chat_time: null,
-            };
-          }
+          return {
+            userid: userId,
+            driver_name: u.name || u.driver_name,
+            driver_image: u.profilePic || u.image || null,
+            lastSeen: u.lastSeen || null,
+            last_message: u.last_message || "",
+            last_chat_time: u.last_chat_time || null,
+          };
         })
-      );
+        .filter(Boolean);
 
       // 🔥 SORT → latest chat first
       const driversWithIds = withLastChat.filter(Boolean);

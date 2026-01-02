@@ -58,6 +58,10 @@ function normalizeMessage(messageId, msg) {
   const dateTime = Number.isNaN(date.getTime())
     ? new Date().toISOString()
     : date.toISOString();
+  const type =
+    msg?.type === 0 ? 1 :
+    msg?.type === 1 ? 0 :
+    msg?.type;
 
   return {
     msgId: messageId,
@@ -68,7 +72,7 @@ function normalizeMessage(messageId, msg) {
       attachmentUrl: msg?.content?.attachmentUrl ?? msg?.attachmentUrl ?? "",
     },
     status: msg?.status ?? 0,
-    type: typeof msg?.type === "number" ? msg.type : 0,
+    type: typeof type === "number" ? type : 0,
     contactId: msg?.contactId ?? msg?.userid ?? null,
     sendername: msg?.sendername ?? "Unknown",
     replyTo: msg?.replyTo ?? null,
@@ -81,6 +85,26 @@ function sortByDateTimeAsc(messages) {
     const right = b?.dateTime ? new Date(b.dateTime).getTime() : 0;
     return left - right;
   });
+}
+
+function getLastMessage(messagesObject) {
+  if (!messagesObject) {
+    return null;
+  }
+
+  let latestMessage = null;
+  let latestTime = -1;
+
+  Object.entries(messagesObject).forEach(([id, msg]) => {
+    const normalized = normalizeMessage(id, msg);
+    const time = new Date(normalized.dateTime).getTime();
+    if (!Number.isNaN(time) && time > latestTime) {
+      latestTime = time;
+      latestMessage = normalized;
+    }
+  });
+
+  return latestMessage;
 }
 
 async function fetchDriverDirectory() {
@@ -138,10 +162,14 @@ export async function fetchUsersForChat() {
         return null;
       }
 
+      const lastMessage = getLastMessage(threads?.[contactId]);
+
       return {
         userid: contactId,
         name: getDriverName(driver, contactId),
         image: getDriverImage(driver),
+        last_message: lastMessage?.content?.message || "",
+        last_chat_time: lastMessage?.dateTime || null,
       };
     })
     .filter(Boolean);
