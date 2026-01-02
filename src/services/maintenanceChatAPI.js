@@ -129,7 +129,10 @@ export async function fetchUsersForChat() {
     const showChatSnapshot = await get(
       ref(database, `${CONFIG_PATH}/${contactId}/showMaintenanceChat`)
     );
-    const isVisible = showChatSnapshot.val();
+    const hasVisibilityConfig = showChatSnapshot.exists();
+    const isVisible = hasVisibilityConfig
+      ? Boolean(showChatSnapshot.val())
+      : true;
 
     if (!isVisible) {
       continue;
