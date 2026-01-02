@@ -6,7 +6,7 @@ import {
 } from "../services/chatAPI";
 import SkeletonLoader from "./skeletons/Skeleton";
 
-const ChatList = ({ onSelectDriver, chatApi }) => {
+const ChatList = ({ onSelectDriver, selectedDriver, chatApi }) => {
   const [drivers, setDrivers] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
@@ -101,6 +101,7 @@ const ChatList = ({ onSelectDriver, chatApi }) => {
   const filtered = drivers.filter((d) =>
     d.driver_name?.toLowerCase().includes(search.toLowerCase())
   );
+  const selectedDriverId = getDriverId(selectedDriver);
 
   return (
     <div className="h-full flex flex-col">
@@ -130,6 +131,7 @@ const ChatList = ({ onSelectDriver, chatApi }) => {
             <ChatListItem
               key={driver.userid}
               driver={driver}
+              isSelected={selectedDriverId === driver.userid}
               onClick={() => onSelectDriver(driver)}
             />
           ))}
