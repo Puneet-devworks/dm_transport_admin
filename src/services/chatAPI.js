@@ -83,6 +83,26 @@ function sortByDateTimeAsc(messages) {
   });
 }
 
+function getLastMessage(messagesObject) {
+  if (!messagesObject) {
+    return null;
+  }
+
+  let latestMessage = null;
+  let latestTime = -1;
+
+  Object.entries(messagesObject).forEach(([id, msg]) => {
+    const normalized = normalizeMessage(id, msg);
+    const time = new Date(normalized.dateTime).getTime();
+    if (!Number.isNaN(time) && time > latestTime) {
+      latestTime = time;
+      latestMessage = normalized;
+    }
+  });
+
+  return latestMessage;
+}
+
 async function fetchDriverDirectory() {
   const token = getToken();
   const response = await fetch(FETCH_USERS_URL, {
@@ -138,10 +158,14 @@ export async function fetchUsersForChat() {
         return null;
       }
 
+      const lastMessage = getLastMessage(threads?.[contactId]);
+
       return {
         userid: contactId,
         name: getDriverName(driver, contactId),
         image: getDriverImage(driver),
+        last_message: lastMessage?.content?.message || "",
+        last_chat_time: lastMessage?.dateTime || null,
       };
     })
     .filter(Boolean);
