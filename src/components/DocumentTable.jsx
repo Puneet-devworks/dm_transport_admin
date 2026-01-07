@@ -6,7 +6,7 @@ import DocumentTableSkeleton from "./skeletons/DocumentTableSkeleton";
 function groupDocumentsByDate(documents) {
   const groups = {};
 
-  documents.forEach((doc) => {
+  documents?.forEach((doc) => {
     const d = new Date(doc.date);
 
     const today = new Date();
@@ -82,7 +82,7 @@ export default function DocumentTable({ documents, loading, setSelectedDoc }) {
       </table>
 
       <p className="mt-5 text-sm text-gray-400">
-        Total Documents: {documents.length}
+        Total Documents: {documents?.length}
       </p>
     </>
   );

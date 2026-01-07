@@ -14,6 +14,8 @@ import {
   fetchAdmins,
   updateAdmin,
 } from "../services/adminAPI";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
 
 const permissionSections = [
   {
@@ -478,12 +480,12 @@ export default function Admins() {
             <form onSubmit={handleChangePassword} className="mt-6 space-y-6">
               <div>
                 <label className="text-sm text-slate-300">New Password</label>
-                <input
+                <Input
                   type="password"
                   value={updatedPassword}
                   onChange={(event) => setUpdatedPassword(event.target.value)}
                   placeholder="Enter new password"
-                  className="mt-3 w-full border-b border-slate-700 bg-transparent px-1 py-2 text-sm text-slate-100 focus:border-slate-400 focus:outline-none"
+                  className="mt-3 w-full border-b border-slate-700 bg-transparent px-1 py-2 text-sm text-slate-100 rounded-none border-x-0 border-t-0 focus:border-slate-400"
                 />
                 {passwordUpdateError && (
                   <p className="mt-3 text-xs text-rose-300">
@@ -540,11 +542,11 @@ export default function Admins() {
         <div className="flex min-h-0 flex-col rounded-2xl border border-slate-800 bg-[#151a1f] p-3 shadow-lg">
           <div className="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-3 py-2">
             <Search className="h-4 w-4 text-slate-400" />
-            <input
+            <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search Admins"
-              className="w-full bg-transparent text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none"
+              className="w-full bg-transparent text-sm text-slate-200 placeholder:text-slate-500 border-0 focus-visible:ring-0"
             />
           </div>
 

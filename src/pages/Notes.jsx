@@ -7,6 +7,8 @@ import {
   updateNotesMessagePriority,
   uploadNotesAttachment,
 } from "../services/notesChatAPI";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
 
 const EMOJI_CHOICES = ["😀", "👍", "❤️", "😂", "😡"];
 const PRIORITY_OPTIONS = [
@@ -345,33 +347,35 @@ export default function Notes() {
                                 </p>
                               )}
                               {message.type === "image" && (
-                                <button
+                                <Button
                                   type="button"
+                                  variant="ghost"
                                   onClick={() =>
                                     setModalContent({
                                       type: "image",
                                       content: message.content,
                                     })
                                   }
-                                  className="overflow-hidden rounded-lg"
+                                  className="overflow-hidden rounded-lg p-0 h-auto"
                                 >
                                   <img
                                     src={message.content}
                                     alt="Note attachment"
                                     className="max-h-60 w-auto rounded-lg object-cover"
                                   />
-                                </button>
+                                </Button>
                               )}
                               {message.type === "video" && (
-                                <button
+                                <Button
                                   type="button"
+                                  variant="ghost"
                                   onClick={() =>
                                     setModalContent({
                                       type: "video",
                                       content: message.content,
                                     })
                                   }
-                                  className="w-full overflow-hidden rounded-lg"
+                                  className="w-full overflow-hidden rounded-lg p-0 h-auto"
                                 >
                                   <video
                                     src={message.content}
@@ -380,7 +384,7 @@ export default function Notes() {
                                   <div className="mt-2 text-xs text-gray-200">
                                     Tap to play video
                                   </div>
-                                </button>
+                                </Button>
                               )}
                               {message.type === "document" && (
                                 <a
@@ -405,8 +409,10 @@ export default function Notes() {
                                 </span>
                               )}
                               <div className="relative">
-                                <button
+                                <Button
                                   type="button"
+                                  variant="outline"
+                                  size="sm"
                                   onClick={() =>
                                     setActiveEmojiMenu(
                                       activeEmojiMenu === message.id
@@ -414,40 +420,46 @@ export default function Notes() {
                                         : message.id
                                     )
                                   }
-                                  className="rounded-full border border-gray-700 px-2 py-0.5 text-[11px] text-gray-200"
+                                  className="rounded-full border border-gray-700 px-2 py-0.5 text-[11px] text-gray-200 h-auto"
                                 >
                                   😊
-                                </button>
+                                </Button>
                                 {activeEmojiMenu === message.id && (
                                   <div className="absolute right-0 z-20 mt-2 flex gap-2 rounded-lg border border-gray-700 bg-[#161b22] p-2">
                                     {EMOJI_CHOICES.map((emoji) => (
-                                      <button
+                                      <Button
                                         key={emoji}
                                         type="button"
+                                        variant="ghost"
+                                        size="sm"
                                         onClick={() => {
                                           handleReaction(message.id, emoji);
                                           setActiveEmojiMenu(null);
                                         }}
-                                        className="text-base"
+                                        className="text-base h-auto p-1"
                                       >
                                         {emoji}
-                                      </button>
+                                      </Button>
                                     ))}
                                   </div>
                                 )}
                               </div>
                               {isMine && (
                                 <>
-                                  <button
+                                  <Button
                                     type="button"
+                                    variant="ghost"
+                                    size="sm"
                                     onClick={() => handleDelete(message.id)}
-                                    className="text-xs text-red-300 hover:text-red-200"
+                                    className="text-xs text-red-300 hover:text-red-200 h-auto px-2 py-1"
                                   >
                                     Delete
-                                  </button>
+                                  </Button>
                                   <div className="relative">
-                                    <button
+                                    <Button
                                       type="button"
+                                      variant="outline"
+                                      size="sm"
                                       onClick={() =>
                                         setActivePriorityMenu(
                                           activePriorityMenu === message.id
@@ -455,39 +467,45 @@ export default function Notes() {
                                             : message.id
                                         )
                                       }
-                                      className="rounded-full border border-gray-700 px-2 py-0.5 text-[11px] text-gray-200"
+                                      className="rounded-full border border-gray-700 px-2 py-0.5 text-[11px] text-gray-200 h-auto"
                                     >
                                       ...
-                                    </button>
+                                    </Button>
                                     {activePriorityMenu === message.id && (
                                       <div className="absolute right-0 z-20 mt-2 w-32 rounded-lg border border-gray-700 bg-[#161b22] py-1 text-xs">
-                                        <button
+                                        <Button
                                           type="button"
+                                          variant="ghost"
+                                          size="sm"
                                           onClick={() =>
                                             handlePriorityChange(message.id, 3)
                                           }
-                                          className="block w-full px-3 py-2 text-left text-red-200 hover:bg-gray-800"
+                                          className="block w-full justify-start px-3 py-2 text-left text-red-200 h-auto"
                                         >
                                           High priority
-                                        </button>
-                                        <button
+                                        </Button>
+                                        <Button
                                           type="button"
+                                          variant="ghost"
+                                          size="sm"
                                           onClick={() =>
                                             handlePriorityChange(message.id, 2)
                                           }
-                                          className="block w-full px-3 py-2 text-left text-orange-200 hover:bg-gray-800"
+                                          className="block w-full justify-start px-3 py-2 text-left text-orange-200 h-auto"
                                         >
                                           Medium priority
-                                        </button>
-                                        <button
+                                        </Button>
+                                        <Button
                                           type="button"
+                                          variant="ghost"
+                                          size="sm"
                                           onClick={() =>
                                             handlePriorityChange(message.id, 1)
                                           }
-                                          className="block w-full px-3 py-2 text-left text-blue-200 hover:bg-gray-800"
+                                          className="block w-full justify-start px-3 py-2 text-left text-blue-200 h-auto"
                                         >
                                           Low priority
-                                        </button>
+                                        </Button>
                                       </div>
                                     )}
                                   </div>
@@ -508,36 +526,44 @@ export default function Notes() {
         <div className="mt-4 rounded-2xl border border-gray-800 bg-[#0f131a] px-4 py-4">
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative">
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => setAttachmentMenuOpen((prev) => !prev)}
                 className="rounded-full border border-gray-700 px-3 py-2 text-sm text-gray-200"
               >
                 + Attachment
-              </button>
+              </Button>
               {attachmentMenuOpen && (
                 <div className="absolute left-0 bottom-12 z-20 w-40 rounded-lg border border-gray-700 bg-[#161b22] py-2 text-sm">
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => handleAttachmentClick("photo")}
-                    className="block w-full px-4 py-2 text-left text-gray-200 hover:bg-gray-800"
+                    className="block w-full justify-start px-4 py-2 text-left text-gray-200 h-auto"
                   >
                     Photo
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => handleAttachmentClick("video")}
-                    className="block w-full px-4 py-2 text-left text-gray-200 hover:bg-gray-800"
+                    className="block w-full justify-start px-4 py-2 text-left text-gray-200 h-auto"
                   >
                     Video
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => handleAttachmentClick("document")}
-                    className="block w-full px-4 py-2 text-left text-gray-200 hover:bg-gray-800"
+                    className="block w-full justify-start px-4 py-2 text-left text-gray-200 h-auto"
                   >
                     Docs
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>
@@ -547,22 +573,23 @@ export default function Notes() {
               className="hidden"
               onChange={handleAttachmentChange}
             />
-            <input
+            <Input
               type="text"
               value={inputValue}
               onChange={(event) => setInputValue(event.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Write a note..."
-              className="flex-1 rounded-full border border-gray-700 bg-[#0d1117] px-4 py-2 text-sm text-white outline-none focus:border-blue-500"
+              className="flex-1 rounded-full border border-gray-700 bg-[#0d1117] px-4 py-2 text-sm text-white focus:border-blue-500"
             />
-            <button
+            <Button
               type="button"
               onClick={handleSend}
               disabled={isUploading || !inputValue.trim()}
-              className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-blue-900"
+              size="sm"
+              className="rounded-full"
             >
               {isUploading ? "Uploading..." : "Send"}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -570,13 +597,15 @@ export default function Notes() {
       {modalContent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6">
           <div className="relative max-h-full w-full max-w-4xl">
-            <button
+            <Button
               type="button"
+              variant="secondary"
+              size="sm"
               onClick={() => setModalContent(null)}
-              className="absolute -right-3 -top-3 rounded-full bg-gray-900 px-3 py-1 text-sm text-white"
+              className="absolute -right-3 -top-3 rounded-full"
             >
               Close
-            </button>
+            </Button>
             {modalContent.type === "image" && (
               <img
                 src={modalContent.content}

@@ -6,9 +6,12 @@ export const baseBackendUrl = import.meta.env.VITE_API_BASE_URL
 
 // Auth routes
 export const loginRoute = `${baseBackendUrl}/login`;
+export const checkTokenRoute = `${baseBackendUrl}/checkToken`;
 
 // Chat routes
-export const fetchUsersRoute = `${baseBackendUrl}/fetchusers`;
+export const fetchUsersRoute = (page = 1, limit = 10) => {
+  return `${baseBackendUrl}/fetchusers?page=${page}&limit=${limit}`;
+};
 export const fetchChatHistoryRoute = (userid) => `${baseBackendUrl}/fetchchathistory?userid=${userid}`;
 export const sendChatMessageRoute = `${baseBackendUrl}/sendchatmessage`;
 export const deleteChatHistoryRoute = `${baseBackendUrl}/deletechathistory`;
@@ -19,21 +22,46 @@ export const fetchDocumentsRoute = (startDate, endDate, options = {}) => {
   const baseUrl = `${baseBackendUrl}/fetchdocuments`;
   const params = new URLSearchParams();
 
+  // Required parameters
   if (startDate && endDate) {
     params.append("start_date", startDate);
     params.append("end_date", endDate);
   }
 
+  // Pagination
+  if (options.page) {
+    params.append("page", options.page);
+  }
   if (options.limit) {
     params.append("limit", options.limit);
   }
 
-  if (options.cursor?.cursor_date) {
-    params.append("cursor_date", options.cursor.cursor_date);
+  // Search
+  if (options.search) {
+    params.append("search", options.search);
   }
 
-  if (options.cursor?.cursor_path) {
-    params.append("cursor_path", options.cursor.cursor_path);
+  // Status filters
+  if (options.isSeen !== undefined && options.isSeen !== null) {
+    params.append("isSeen", options.isSeen);
+  }
+
+  // Flagged filter
+  if (options.isFlagged !== undefined && options.isFlagged !== null) {
+    params.append("isFlagged", options.isFlagged);
+  }
+
+  // Category filter (document type) - single value
+  if (options.category) {
+    params.append("category", options.category);
+  }
+
+  // Type filters (multiple document types) - for backward compatibility
+  // Note: If filters array is provided, send as multiple "type" parameters
+  if (options.filters && Array.isArray(options.filters) && options.filters.length > 0) {
+    options.filters.forEach((filter) => {
+      params.append("type", filter);
+    });
   }
 
   const queryString = params.toString();

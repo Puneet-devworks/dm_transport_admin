@@ -196,6 +196,8 @@ import {
 import ChatMessageBubble from "./ChatMessageBubble";
 import { groupMessagesByDate } from "../utils/groupMessages";
 import ChatWindowSkeleton from "./skeletons/ChatWindowSkeleton";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
 
 /* ================= LAST SEEN FORMATTER ================= */
 function formatLastSeen(lastSeen) {
@@ -353,24 +355,27 @@ export default function ChatWindow({ driver, chatApi }) {
         </div>
 
         <div className="flex items-center gap-4">
-          <button
+          <Button
             onClick={handleDeleteSelected}
             disabled={selected.length === 0}
+            variant="ghost"
+            size="icon"
             className={`text-xl ${
               selected.length
                 ? "text-red-500 hover:text-red-600"
-                : "text-gray-600 cursor-not-allowed"
+                : "text-gray-600"
             }`}
           >
             🗑
-          </button>
+          </Button>
 
-          <button
+          <Button
             onClick={handleDeleteAll}
-            className="px-3 py-1 border border-red-500 text-red-400 rounded hover:bg-red-600 hover:text-white"
+            variant="destructive"
+            size="sm"
           >
             Delete All
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -406,22 +411,22 @@ export default function ChatWindow({ driver, chatApi }) {
 
       {/* ================= INPUT BAR ================= */}
       <div className="p-4 border-t border-gray-700 bg-[#111827] sticky bottom-0 flex gap-2">
-        <button className="text-2xl text-gray-300 hover:text-white">📎</button>
+        <Button variant="ghost" size="icon" className="text-2xl text-gray-300 hover:text-white">📎</Button>
 
-        <input
-          className="flex-1 bg-[#1f2937] p-2 rounded outline-none"
+        <Input
+          className="flex-1 bg-[#1f2937]"
           placeholder="Type a message..."
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
         />
 
-        <button
-          className="bg-blue-600 px-4 rounded hover:bg-blue-700"
+        <Button
           onClick={handleSend}
+          size="sm"
         >
           Send
-        </button>
+        </Button>
       </div>
     </div>
   );

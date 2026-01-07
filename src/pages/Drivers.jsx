@@ -16,6 +16,7 @@ import {
   Pencil,
 } from "lucide-react";
 import { useDriversQuery } from "../services/driverQueries";
+import { Button } from "../components/ui/button";
 
 const initialDrivers = [
   {
@@ -384,12 +385,12 @@ export default function Drivers() {
         <div className="flex h-[740px] flex-col rounded-2xl border border-slate-800 bg-slate-950/60">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 p-4">
             <div className="relative flex-1 min-w-[240px]">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-              <input
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 z-10" />
+              <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search by name, route, or phone"
-                className="w-full rounded-full border border-slate-800 bg-slate-900/60 py-2 pl-9 pr-4 text-sm text-slate-200 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none"
+                className="w-full rounded-full border border-slate-800 bg-slate-900/60 py-2 pl-9 pr-4 text-sm text-slate-200 placeholder:text-slate-500 focus:border-sky-500"
               />
             </div>
             <div className="flex flex-wrap gap-2 text-xs">
@@ -707,11 +708,11 @@ export default function Drivers() {
               <div className="space-y-6 px-6 py-6">
                 <label className="block text-sm text-slate-300">
                   New Password
-                  <input
+                  <Input
                     type="password"
                     value={passwordState.password}
                     onChange={handlePasswordChange}
-                    className="mt-2 w-full border-b border-slate-700 bg-transparent pb-2 text-base text-slate-100 outline-none transition focus:border-sky-500"
+                    className="mt-2 w-full border-b border-slate-700 bg-transparent pb-2 text-base text-slate-100 rounded-none border-x-0 border-t-0 transition focus:border-sky-500"
                   />
                 </label>
                 <div className="flex justify-center">
@@ -728,49 +729,49 @@ export default function Drivers() {
                 <div className="space-y-4">
                   <label className="block text-sm text-slate-300">
                     Name
-                    <input
+                    <Input
                       type="text"
                       name="name"
                       value={formState.name}
                       onChange={handleFormChange}
                       placeholder="Driver name"
-                      className="mt-2 w-full border-b border-slate-700 bg-transparent pb-2 text-base text-slate-100 outline-none transition focus:border-sky-500"
+                      className="mt-2 w-full border-b border-slate-700 bg-transparent pb-2 text-base text-slate-100 rounded-none border-x-0 border-t-0 transition focus:border-sky-500"
                     />
                   </label>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <label className="block text-sm text-slate-300">
                       Email
-                      <input
+                      <Input
                         type="email"
                         name="email"
                         value={formState.email}
                         onChange={handleFormChange}
                         placeholder="driver@email.com"
-                        className="mt-2 w-full border-b border-slate-700 bg-transparent pb-2 text-base text-slate-100 outline-none transition focus:border-sky-500"
+                        className="mt-2 w-full border-b border-slate-700 bg-transparent pb-2 text-base text-slate-100 rounded-none border-x-0 border-t-0 transition focus:border-sky-500"
                       />
                     </label>
                     <label className="block text-sm text-slate-300">
                       Password
-                      <input
+                      <Input
                         type="password"
                         name="password"
                         value={formState.password}
                         onChange={handleFormChange}
                         placeholder="••••••••"
-                        className="mt-2 w-full border-b border-slate-700 bg-transparent pb-2 text-base text-slate-100 outline-none transition focus:border-sky-500"
+                        className="mt-2 w-full border-b border-slate-700 bg-transparent pb-2 text-base text-slate-100 rounded-none border-x-0 border-t-0 transition focus:border-sky-500"
                       />
                     </label>
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <label className="block text-sm text-slate-300">
                       Phone
-                      <input
+                      <Input
                         type="tel"
                         name="phone"
                         value={formState.phone}
                         onChange={handleFormChange}
                         placeholder="6477200423"
-                        className="mt-2 w-full border-b border-slate-700 bg-transparent pb-2 text-base text-slate-100 outline-none transition focus:border-sky-500"
+                        className="mt-2 w-full border-b border-slate-700 bg-transparent pb-2 text-base text-slate-100 rounded-none border-x-0 border-t-0 transition focus:border-sky-500"
                       />
                     </label>
                     <label className="block text-sm text-slate-300">

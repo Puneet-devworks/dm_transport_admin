@@ -1,5 +1,5 @@
 const DRIVERS_API_URL =
-  "https://northamerica-northeast1-dmtransport-1.cloudfunctions.net/api/admin/fetchUsers";
+  "http://127.0.0.1:5001/dmtransport-1/northamerica-northeast1/api/admin/fetchUsers";
 
 function mapDriver(user) {
   const lastSeenSeconds = user?.lastSeen?._seconds;

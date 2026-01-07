@@ -13,6 +13,7 @@ import ProtectedLayout from "./layout/ProtectedLayout";
 import NotFoundPage from "./pages/NotFoundPage";
 
 function App() {
+  // Fetch users on mount
   return (
     <AuthProvider>
       <BrowserRouter>

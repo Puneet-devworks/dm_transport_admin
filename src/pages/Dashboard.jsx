@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { fetchDocuments } from "../store/slices/documentsSlice";
 import DocumentCard from "../components/DocumentCard";
-import { fetchDocumentsRoute } from "../utils/apiRoutes";
+import { Button } from "../components/ui/button";
 
 const summaryStats = [
   { label: "Active Chats", value: "148", trend: "+12% vs last week" },
@@ -78,35 +80,25 @@ function getDefaultDates() {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const { start, end } = getDefaultDates();
-  const [documents, setDocuments] = useState([]);
+  const { documents, loading, error, lastFetchParams, lastFetched } = useAppSelector(
+    (state) => state.documents
+  );
 
   useEffect(() => {
-    async function fetchDocs() {
-      try {
-        const token = localStorage.getItem("adminToken");
-        const url = fetchDocumentsRoute(start, end);
-
-        const res = await fetch(url, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) return;
-
-        setDocuments(data.documents || []);
-      } catch (err) {
-        console.log("Fetch error:", err);
-      }
+    // Only fetch if params changed or if data is stale (older than 5 minutes)
+    const paramsChanged = 
+      !lastFetchParams || 
+      lastFetchParams.startDate !== start || 
+      lastFetchParams.endDate !== end;
+    
+    const isStale = lastFetched && Date.now() - lastFetched > 5 * 60 * 1000;
+    
+    if ((paramsChanged || isStale) && !loading) {
+      dispatch(fetchDocuments({ startDate: start, endDate: end }));
     }
-
-    fetchDocs();
-  }, [start, end]);
+  }, [dispatch, start, end, lastFetchParams, lastFetched, loading]);
 
   const unseenDocuments = useMemo(
     () => documents.filter((doc) => doc.seen === false),
@@ -233,16 +225,17 @@ export default function Dashboard() {
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
           {documentTiles.map((doc) => (
             <div key={doc.title} className="relative">
-              <button
+              <Button
                 type="button"
-                className="w-full text-left"
+                variant="ghost"
+                className="w-full justify-start p-0 h-auto"
                 onClick={() => handleTileClick(doc.filterType)}
               >
                 <DocumentCard
                   title={doc.title}
                   count={documentCounts[doc.filterType] || 0}
                 />
-              </button>
+              </Button>
               <span
                 className={`absolute top-4 right-4 text-[10px] uppercase tracking-wide px-2 py-1 rounded-full ${
                   doc.priority === "High"

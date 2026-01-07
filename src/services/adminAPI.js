@@ -1,5 +1,5 @@
 const BASE_URL =
-  import.meta.env.VITE_ADMIN_API_URL ??
+  import.meta.env.VITE_API_BASE_URL ??
   "https://northamerica-northeast1-dmtransport-1.cloudfunctions.net/api/admin";
 
 function getToken() {

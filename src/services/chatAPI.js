@@ -12,8 +12,8 @@ import { database } from "../firebase/firebaseApp";
 
 const ADMIN_GENERAL_PATH = "chat/users/admin/general";
 const USER_MIRROR_BASE = "chat/users";
-const FETCH_CHAT_THREADS_URL =
-  "https://northamerica-northeast1-dmtransport-1.cloudfunctions.net/api/admin/fetchchatthreads?chatType=general";
+const FETCH_USERS_URL =
+  "http://127.0.0.1:5001/dmtransport-1/northamerica-northeast1/api/admin/fetchUsers";
 
 function getToken() {
   return localStorage.getItem("adminToken");
@@ -60,7 +60,7 @@ function sortByDateTimeAsc(messages) {
 
 export async function fetchUsersForChat() {
   const token = getToken();
-  const response = await fetch(FETCH_CHAT_THREADS_URL, {
+  const response = await fetch(FETCH_USERS_URL, {
     method: "GET",
     headers: {
       Authorization: `Bearer ${token}`,

@@ -3,6 +3,7 @@ import { Settings } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import NotesNotifications from "./NotesNotifications";
+import { Button } from "./ui/button";
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
@@ -34,16 +35,20 @@ export default function Navbar() {
               {user?.userid || "Admin"}
             </p>
 
-            <button className="w-full text-left px-4 py-2 hover:bg-[#2a313a] text-gray-300">
+            <Button
+              variant="ghost"
+              className="w-full justify-start px-4 py-2 text-gray-300"
+            >
               Change Password
-            </button>
+            </Button>
 
-            <button
+            <Button
               onClick={handleLogout}
-              className="w-full text-left px-4 py-2 hover:bg-red-600 hover:text-white text-red-400"
+              variant="destructive"
+              className="w-full justify-start px-4 py-2"
             >
               Logout
-            </button>
+            </Button>
           </div>
         )}
       </div>

@@ -3,6 +3,8 @@ import { Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { loginRoute } from "../utils/apiRoutes";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
 
 export default function Login() {
   const [id, setId] = useState("");
@@ -92,12 +94,12 @@ export default function Login() {
           {/* ID */}
           <div className="mb-6">
             <label className="block text-gray-400 mb-1">Admin ID</label>
-            <input
+            <Input
               disabled={loading}
               value={id}
               onChange={(e) => setId(e.target.value)}
               type="text"
-              className="w-full bg-transparent border-b border-gray-600
+              className="w-full bg-transparent border-b border-gray-600 rounded-none border-x-0 border-t-0
               focus:border-[#1f6feb] transition outline-none py-2 pl-2
               text-gray-200 disabled:opacity-50"
             />
@@ -106,23 +108,25 @@ export default function Login() {
           {/* Password */}
           <div className="mb-6 relative">
             <label className="block text-gray-400 mb-1">Password</label>
-            <input
+            <Input
               disabled={loading}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               type={showPassword ? "text" : "password"}
-              className="w-full bg-transparent border-b border-gray-600
+              className="w-full bg-transparent border-b border-gray-600 rounded-none border-x-0 border-t-0
               focus:border-[#1f6feb] transition outline-none py-2 pr-2 pl-2
               text-gray-200 disabled:opacity-50"
             />
-            <button
+            <Button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
+              variant="ghost"
+              size="icon-sm"
               className="absolute right-2 top-10 text-gray-400 hover:text-gray-200"
               tabIndex={-1}
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
+            </Button>
           </div>
 
           {error && (
@@ -131,15 +135,13 @@ export default function Login() {
             </p>
           )}
 
-          <button
+          <Button
+            type="submit"
             disabled={loading}
-            className="w-full mt-4 bg-[#1f6feb] hover:bg-[#1158c7]
-            transition text-white py-2 rounded-full
-            flex justify-center items-center
-            disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full mt-4 rounded-full"
           >
             {loading ? "Authenticating..." : "Login"}
-          </button>
+          </Button>
 
           <p className="mt-6 text-xs text-gray-600 text-center">
             🔒 Secure Access
