@@ -7,11 +7,13 @@ import { Input } from "./ui/input";
 
 const ChatList = ({ onSelectDriver, selectedDriver, chatApi }) => {
   const dispatch = useAppDispatch();
-  const { users, loading, loadingMore, lastFetched, hasMore, page, limit } = useAppSelector(
+  const { users, loading, loadingMore, lastFetched, hasMore, page, limit, lastSearch } = useAppSelector(
     (state) => state.users
   );
   const [search, setSearch] = useState("");
+  const [searchDebounced, setSearchDebounced] = useState("");
   const observerTarget = useRef(null);
+  const hasInitiallyFetched = useRef(false);
 
   function getDriverId(driver) {
     const candidate =
@@ -30,16 +32,33 @@ const ChatList = ({ onSelectDriver, selectedDriver, chatApi }) => {
     return candidate;
   }
 
-  // Initial fetch
+  // Debounce search input
   useEffect(() => {
-    // Only fetch if we don't have users or if data is stale (older than 5 minutes)
-    const shouldFetch = !users.length || 
-      (lastFetched && Date.now() - lastFetched > 5 * 60 * 1000);
-    
-    if (shouldFetch && !loading) {
-      dispatch(fetchUsers({ limit }));
+    const timer = setTimeout(() => {
+      setSearchDebounced(search);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Initial fetch on mount
+  useEffect(() => {
+    if (!hasInitiallyFetched.current && !loading) {
+      hasInitiallyFetched.current = true;
+      dispatch(fetchUsers({ page: 1, limit }));
     }
-  }, [dispatch, users.length, lastFetched, loading, limit]);
+  }, [dispatch, limit, loading]);
+
+  // Refetch when search changes
+  useEffect(() => {
+    // Only refetch if search actually changed (using strict comparison)
+    const searchValue = searchDebounced.trim() || undefined;
+    const lastSearchValue = lastSearch !== undefined ? lastSearch : undefined;
+    
+    if (searchValue !== lastSearchValue && !loading && hasInitiallyFetched.current) {
+      dispatch(fetchUsers({ page: 1, limit, search: searchValue }));
+    }
+  }, [dispatch, limit, searchDebounced, lastSearch, loading]);
 
   // Infinite scroll observer - prevent duplicate calls
   const isLoadingRef = useRef(false);
@@ -48,11 +67,12 @@ const ChatList = ({ onSelectDriver, selectedDriver, chatApi }) => {
     if (hasMore && !loadingMore && !loading && !isLoadingRef.current) {
       isLoadingRef.current = true;
       const nextPage = page + 1;
-      dispatch(fetchMoreUsers({ page: nextPage, limit })).finally(() => {
+      const searchValue = searchDebounced.trim() || undefined;
+      dispatch(fetchMoreUsers({ page: nextPage, limit, search: searchValue })).finally(() => {
         isLoadingRef.current = false;
       });
     }
-  }, [dispatch, hasMore, loadingMore, loading, page, limit]);
+  }, [dispatch, hasMore, loadingMore, loading, page, limit, searchDebounced]);
 
   useEffect(() => {
     // Only set up observer if we have more to load and not currently loading
@@ -121,9 +141,8 @@ const ChatList = ({ onSelectDriver, selectedDriver, chatApi }) => {
     return driversWithIds;
   }, [users]);
 
-  const filtered = drivers.filter((d) =>
-    d.driver_name?.toLowerCase().includes(search.toLowerCase())
-  );
+  // No client-side filtering - API handles search
+  const filtered = drivers;
   const selectedDriverId = getDriverId(selectedDriver);
 
   return (

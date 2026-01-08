@@ -4,10 +4,10 @@ import { fetchUsersRoute } from "../../utils/apiRoutes";
 // Async thunk for fetching initial users
 export const fetchUsers = createAsyncThunk(
   "users/fetchUsers",
-  async ({ page = 1, limit = 10 } = {}, { rejectWithValue }) => {
+  async ({ page = 1, limit = 10, search = undefined } = {}, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem("adminToken");
-      const url = fetchUsersRoute(page, limit);
+      const url = fetchUsersRoute(page, limit, search);
       
       const res = await fetch(url, {
         method: "GET",
@@ -23,11 +23,17 @@ export const fetchUsers = createAsyncThunk(
         return rejectWithValue(data.message || "Failed to fetch users");
       }
 
+      // Handle API response format with pagination object
+      const pagination = data.pagination || {};
+      
       return {
         users: data.users || [],
-        hasMore: data.hasMore || false,
-        page: data.page || page,
-        limit: data.limit || limit,
+        hasMore: pagination.hasMore !== undefined ? pagination.hasMore : false,
+        page: pagination.page || page,
+        limit: pagination.limit || limit,
+        totalDocuments: pagination.totalDocuments || 0,
+        totalPages: pagination.totalPages || 0,
+        search: search,
       };
     } catch (error) {
       return rejectWithValue(error.message || "Failed to fetch users");
@@ -38,10 +44,10 @@ export const fetchUsers = createAsyncThunk(
 // Async thunk for loading more users (pagination)
 export const fetchMoreUsers = createAsyncThunk(
   "users/fetchMoreUsers",
-  async ({ page, limit = 10 }, { rejectWithValue }) => {
+  async ({ page, limit = 10, search = undefined }, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem("adminToken");
-      const url = fetchUsersRoute(page, limit);
+      const url = fetchUsersRoute(page, limit, search);
       
       const res = await fetch(url, {
         method: "GET",
@@ -57,11 +63,16 @@ export const fetchMoreUsers = createAsyncThunk(
         return rejectWithValue(data.message || "Failed to fetch more users");
       }
 
+      // Handle API response format with pagination object
+      const pagination = data.pagination || {};
+      
       return {
         users: data.users || [],
-        hasMore: data.hasMore || false,
-        page: data.page || page,
-        limit: data.limit || limit,
+        hasMore: pagination.hasMore !== undefined ? pagination.hasMore : false,
+        page: pagination.page || page,
+        limit: pagination.limit || limit,
+        totalDocuments: pagination.totalDocuments || 0,
+        totalPages: pagination.totalPages || 0,
       };
     } catch (error) {
       return rejectWithValue(error.message || "Failed to fetch more users");
@@ -80,6 +91,9 @@ const usersSlice = createSlice({
     hasMore: false,
     page: 1,
     limit: 10,
+    totalDocuments: 0,
+    totalPages: 0,
+    lastSearch: undefined,
   },
   reducers: {
     clearUsers: (state) => {
@@ -110,6 +124,9 @@ const usersSlice = createSlice({
         state.hasMore = action.payload.hasMore;
         state.page = action.payload.page;
         state.limit = action.payload.limit;
+        state.totalDocuments = action.payload.totalDocuments;
+        state.totalPages = action.payload.totalPages;
+        state.lastSearch = action.payload.search;
         state.loading = false;
         state.error = null;
         state.lastFetched = Date.now();
@@ -129,6 +146,8 @@ const usersSlice = createSlice({
         state.hasMore = action.payload.hasMore;
         state.page = action.payload.page;
         state.limit = action.payload.limit;
+        state.totalDocuments = action.payload.totalDocuments;
+        state.totalPages = action.payload.totalPages;
         state.loadingMore = false;
         state.error = null;
       })

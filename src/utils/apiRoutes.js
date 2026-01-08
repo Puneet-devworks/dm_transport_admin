@@ -9,8 +9,19 @@ export const loginRoute = `${baseBackendUrl}/login`;
 export const checkTokenRoute = `${baseBackendUrl}/checkToken`;
 
 // Chat routes
-export const fetchUsersRoute = (page = 1, limit = 10) => {
-  return `${baseBackendUrl}/fetchusers?page=${page}&limit=${limit}`;
+export const fetchUsersRoute = (page = 1, limit = 10, search = undefined) => {
+  const baseUrl = `${baseBackendUrl}/fetchusers`;
+  const params = new URLSearchParams();
+  
+  params.append("page", page);
+  params.append("limit", limit);
+  
+  // Only include search if it's provided (even if empty string)
+  if (search !== undefined) {
+    params.append("search", search);
+  }
+  
+  return `${baseUrl}?${params.toString()}`;
 };
 export const fetchChatHistoryRoute = (userid) => `${baseBackendUrl}/fetchchathistory?userid=${userid}`;
 export const sendChatMessageRoute = `${baseBackendUrl}/sendchatmessage`;
