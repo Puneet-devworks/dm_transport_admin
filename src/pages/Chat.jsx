@@ -1,6 +1,7 @@
 import { useState } from "react";
 import ChatList from "../components/ChatList";
 import ChatWindow from "../components/ChatWindow";
+import * as chatAPI from "../services/chatAPI";
 
 const Chat = () => {
   const [selectedDriver, setSelectedDriver] = useState(null);
@@ -12,13 +13,14 @@ const Chat = () => {
         <ChatList
           onSelectDriver={setSelectedDriver}
           selectedDriver={selectedDriver}
+          chatApi={chatAPI}
         />
       </div>
 
       {/* RIGHT CHAT WINDOW (TAKES REST SPACE) */}
       <div className="flex-1 h-full overflow-hidden">
         {selectedDriver ? (
-          <ChatWindow driver={selectedDriver} />
+          <ChatWindow driver={selectedDriver} chatApi={chatAPI} />
         ) : (
           <div className="flex justify-center items-center h-full text-gray-500">
             Select a driver to start chat

@@ -234,19 +234,22 @@ export default function ChatWindow({ driver, chatApi }) {
 
     return candidate;
   })();
+
+  const bottomRef = useRef(null);
+
   const {
     subscribeMessages,
     sendMessage,
     deleteChatHistory,
     deleteSpecificMessage,
+    markMessagesAsSeen,
   } = chatApi || {
     subscribeMessages: defaultSubscribeMessages,
     sendMessage: defaultSendMessage,
     deleteChatHistory: defaultDeleteChatHistory,
     deleteSpecificMessage: defaultDeleteSpecificMessage,
+    markMessagesAsSeen: async () => ({ success: true }),
   };
-
-  const bottomRef = useRef(null);
 
   /* ================= LOAD MESSAGES ================= */
   useEffect(() => {
@@ -261,10 +264,24 @@ export default function ChatWindow({ driver, chatApi }) {
     setMessages([]);
     setSelected([]);
 
+    // Mark messages as seen when chat window opens
+    if (markMessagesAsSeen) {
+      markMessagesAsSeen(driverId).catch((error) => {
+        console.error("Failed to mark messages as seen:", error);
+      });
+    }
+
     const unsubscribe = subscribeMessages(driverId, (nextMessages) => {
       setMessages(nextMessages || []);
       setLoading(false);
       scrollToBottom();
+      
+      // Mark messages as seen after loading
+      if (markMessagesAsSeen) {
+        markMessagesAsSeen(driverId).catch((error) => {
+          console.error("Failed to mark messages as seen:", error);
+        });
+      }
     });
 
     return () => {
@@ -272,7 +289,7 @@ export default function ChatWindow({ driver, chatApi }) {
         unsubscribe();
       }
     };
-  }, [driverId, subscribeMessages]);
+  }, [driverId, subscribeMessages, markMessagesAsSeen]);
 
   function scrollToBottom() {
     setTimeout(() => {

@@ -1,9 +1,10 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
-import { fetchUsers, fetchMoreUsers } from "../store/slices/usersSlice";
+import { fetchUsers, fetchMoreUsers, updateUserLastMessage } from "../store/slices/usersSlice";
 import ChatListItem from "./ChatListItem";
 import SkeletonLoader from "./skeletons/Skeleton";
 import { Input } from "./ui/input";
+import { fetchMessages as defaultFetchMessages } from "../services/chatAPI";
 
 const ChatList = ({ onSelectDriver, selectedDriver, chatApi }) => {
   const dispatch = useAppDispatch();
@@ -14,6 +15,13 @@ const ChatList = ({ onSelectDriver, selectedDriver, chatApi }) => {
   const [searchDebounced, setSearchDebounced] = useState("");
   const observerTarget = useRef(null);
   const hasInitiallyFetched = useRef(false);
+  const [fetchingMessages, setFetchingMessages] = useState(new Set());
+  const fetchedUsersRef = useRef(new Set()); // Track users we've already fetched messages for
+  const [unreadCounts, setUnreadCounts] = useState({}); // Track unread counts per user
+  const unsubscribeUnreadRefs = useRef({}); // Track unsubscribe functions for unread counts
+  
+  const fetchMessages = chatApi?.fetchMessages || defaultFetchMessages;
+  const subscribeUnreadCount = chatApi?.subscribeUnreadCount;
 
   function getDriverId(driver) {
     const candidate =
@@ -56,6 +64,8 @@ const ChatList = ({ onSelectDriver, selectedDriver, chatApi }) => {
     const lastSearchValue = lastSearch !== undefined ? lastSearch : undefined;
     
     if (searchValue !== lastSearchValue && !loading && hasInitiallyFetched.current) {
+      // Clear fetched users cache when search changes to allow refetching
+      fetchedUsersRef.current.clear();
       dispatch(fetchUsers({ page: 1, limit, search: searchValue }));
     }
   }, [dispatch, limit, searchDebounced, lastSearch, loading]);
@@ -104,6 +114,132 @@ const ChatList = ({ onSelectDriver, selectedDriver, chatApi }) => {
     };
   }, [handleLoadMore, hasMore, loadingMore, loading]);
 
+  // Fetch last message for users that don't have one
+  useEffect(() => {
+    if (!users?.length || !fetchMessages) return;
+
+    const fetchLastMessages = async () => {
+      const usersToFetch = users.filter((u) => {
+        const userId = getDriverId(u);
+        if (!userId) return false;
+        // Only fetch if:
+        // 1. User doesn't have last_message from API
+        // 2. We haven't already fetched for this user
+        // 3. We're not currently fetching for this user
+        return (
+          !u.last_message &&
+          !fetchedUsersRef.current.has(userId) &&
+          !fetchingMessages.has(userId)
+        );
+      });
+
+      if (usersToFetch.length === 0) return;
+
+      // Mark users as being fetched
+      const newFetchingSet = new Set(fetchingMessages);
+      usersToFetch.forEach((u) => {
+        const userId = getDriverId(u);
+        if (userId) {
+          newFetchingSet.add(userId);
+          fetchedUsersRef.current.add(userId);
+        }
+      });
+      setFetchingMessages(newFetchingSet);
+
+      // Fetch messages for all users in parallel (with a limit to avoid too many requests)
+      const fetchPromises = usersToFetch.slice(0, 10).map(async (u) => {
+        const userId = getDriverId(u);
+        if (!userId) return null;
+
+        try {
+          const { messages } = await fetchMessages(userId);
+          if (messages && messages.length > 0) {
+            const lastMessage = messages[messages.length - 1];
+            const lastMessageText = lastMessage?.content?.message || "";
+            const lastChatTime = lastMessage?.dateTime || null;
+
+            // Update Redux store with last message
+            dispatch(
+              updateUserLastMessage({
+                userid: userId,
+                lastMessage: lastMessageText,
+                lastChatTime: lastChatTime,
+              })
+            );
+          } else {
+            // Even if no messages, mark as fetched to avoid refetching
+            dispatch(
+              updateUserLastMessage({
+                userid: userId,
+                lastMessage: "",
+                lastChatTime: null,
+              })
+            );
+          }
+        } catch (error) {
+          console.error(`Failed to fetch messages for user ${userId}:`, error);
+          // On error, still mark as fetched to avoid infinite retries
+          fetchedUsersRef.current.add(userId);
+        } finally {
+          // Remove from fetching set
+          setFetchingMessages((prev) => {
+            const next = new Set(prev);
+            next.delete(userId);
+            return next;
+          });
+        }
+      });
+
+      await Promise.all(fetchPromises);
+    };
+
+    fetchLastMessages();
+  }, [users, fetchMessages, dispatch, fetchingMessages]);
+
+  // Subscribe to unread counts for all users
+  useEffect(() => {
+    if (!subscribeUnreadCount || !users?.length) return;
+
+    // Subscribe to unread counts for each user
+    users.forEach((u) => {
+      const userId = getDriverId(u);
+      if (!userId) return;
+
+      // If already subscribed, skip
+      if (unsubscribeUnreadRefs.current[userId]) return;
+
+      // Subscribe to unread count changes
+      const unsubscribe = subscribeUnreadCount(userId, (count) => {
+        setUnreadCounts((prev) => ({
+          ...prev,
+          [userId]: count,
+        }));
+      });
+
+      unsubscribeUnreadRefs.current[userId] = unsubscribe;
+    });
+
+    // Cleanup: unsubscribe from users that are no longer in the list
+    return () => {
+      const currentUserIds = new Set(users.map((u) => getDriverId(u)).filter(Boolean));
+      Object.keys(unsubscribeUnreadRefs.current).forEach((userId) => {
+        if (!currentUserIds.has(userId)) {
+          const unsubscribe = unsubscribeUnreadRefs.current[userId];
+          if (unsubscribe) {
+            unsubscribe();
+            delete unsubscribeUnreadRefs.current[userId];
+          }
+          // Remove from unread counts
+          setUnreadCounts((prev) => {
+            const next = { ...prev };
+            delete next[userId];
+            return next;
+          });
+        }
+      });
+    };
+  }, [users, subscribeUnreadCount]);
+
   // Transform users from Redux to drivers format
   const drivers = useMemo(() => {
     if (!users?.length) return [];
@@ -122,14 +258,20 @@ const ChatList = ({ onSelectDriver, selectedDriver, chatApi }) => {
           lastSeen: u.lastSeen || null,
           last_message: u.last_message || "",
           last_chat_time: u.last_chat_time || null,
+          unreadCount: unreadCounts[userId] || 0,
         };
       })
       .filter(Boolean);
 
-    // 🔥 SORT → latest chat first
+    // 🔥 SORT → latest chat first, but prioritize unread messages
     const driversWithIds = withLastChat.filter(Boolean);
 
     driversWithIds.sort((a, b) => {
+      // First sort by unread count (unread messages first)
+      if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
+      if (a.unreadCount === 0 && b.unreadCount > 0) return 1;
+      
+      // Then by last chat time
       if (!a.last_chat_time) return 1;
       if (!b.last_chat_time) return -1;
       return (
@@ -139,7 +281,7 @@ const ChatList = ({ onSelectDriver, selectedDriver, chatApi }) => {
     });
 
     return driversWithIds;
-  }, [users]);
+  }, [users, unreadCounts]);
 
   // No client-side filtering - API handles search
   const filtered = drivers;

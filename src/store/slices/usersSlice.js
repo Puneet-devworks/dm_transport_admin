@@ -104,7 +104,17 @@ const usersSlice = createSlice({
     },
     updateUserLastMessage: (state, action) => {
       const { userid, lastMessage, lastChatTime } = action.payload;
-      const user = state.users.find((u) => u.userid === userid);
+      const user = state.users.find((u) => {
+        // Try multiple possible ID fields
+        return (
+          u.userid === userid ||
+          u.userId === userid ||
+          u.contactId === userid ||
+          u.contactid === userid ||
+          u.uid === userid ||
+          u.id === userid
+        );
+      });
       if (user) {
         user.last_message = lastMessage;
         user.last_chat_time = lastChatTime;

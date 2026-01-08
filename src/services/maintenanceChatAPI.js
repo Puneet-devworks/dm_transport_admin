@@ -7,6 +7,7 @@ import {
   ref,
   remove,
   set,
+  update,
 } from "firebase/database";
 import { database } from "../firebase/firebaseApp";
 
@@ -169,4 +170,103 @@ export async function deleteSpecificMessage(messageId, userid) {
   await Promise.all(deletes);
 
   return { success: true };
+}
+
+// Mark messages as seen/read for a specific user
+export async function markMessagesAsSeen(userid) {
+  try {
+    const messagesRef = ref(database, `${ADMIN_MAINTENANCE_PATH}/${userid}`);
+    const snapshot = await get(messagesRef);
+    
+    if (!snapshot.exists()) {
+      return { success: true };
+    }
+
+    const messagesObject = snapshot.val();
+    const updateData = {};
+    const adminUser = getAdminUser();
+    const adminId = adminUser?.userid || "admin";
+    const seenTimestamp = new Date().toISOString();
+
+    // Update all unread messages (type === 1, from user) to mark them as seen
+    Object.keys(messagesObject).forEach((messageId) => {
+      const msg = messagesObject[messageId];
+      // Only mark messages from user (type === 1) that haven't been seen
+      if (msg.type === 1 && !msg.seenByAdmin) {
+        const messagePath = `${ADMIN_MAINTENANCE_PATH}/${userid}/${messageId}`;
+        updateData[`${messagePath}/seenByAdmin`] = true;
+        updateData[`${messagePath}/seenAt`] = seenTimestamp;
+        updateData[`${messagePath}/seenBy`] = adminId;
+      }
+    });
+
+    if (Object.keys(updateData).length > 0) {
+      // Use update to batch update all fields at once
+      await update(ref(database), updateData);
+    }
+
+    // Store last seen timestamp for this user
+    const lastSeenRef = ref(database, `chat/admin/maintenance/lastSeen/${userid}`);
+    await set(lastSeenRef, {
+      timestamp: seenTimestamp,
+      adminId: adminId,
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error marking messages as seen:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Get unread message count for a user
+export async function getUnreadCount(userid) {
+  try {
+    const messagesRef = ref(database, `${ADMIN_MAINTENANCE_PATH}/${userid}`);
+    const snapshot = await get(messagesRef);
+    
+    if (!snapshot.exists()) {
+      return 0;
+    }
+
+    const messagesObject = snapshot.val();
+    let unreadCount = 0;
+
+    Object.values(messagesObject).forEach((msg) => {
+      // Count messages from user (type === 1) that haven't been seen
+      if (msg.type === 1 && !msg.seenByAdmin) {
+        unreadCount++;
+      }
+    });
+
+    return unreadCount;
+  } catch (error) {
+    console.error("Error getting unread count:", error);
+    return 0;
+  }
+}
+
+// Subscribe to unread count changes for a user
+export function subscribeUnreadCount(userid, onChange) {
+  const messagesRef = ref(database, `${ADMIN_MAINTENANCE_PATH}/${userid}`);
+  
+  const unsubscribe = onValue(messagesRef, (snapshot) => {
+    if (!snapshot.exists()) {
+      onChange(0);
+      return;
+    }
+
+    const messagesObject = snapshot.val();
+    let unreadCount = 0;
+
+    Object.values(messagesObject).forEach((msg) => {
+      if (msg.type === 1 && !msg.seenByAdmin) {
+        unreadCount++;
+      }
+    });
+
+    onChange(unreadCount);
+  });
+
+  return unsubscribe;
 }
