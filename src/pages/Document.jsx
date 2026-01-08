@@ -22,8 +22,11 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "../components/ui/drawer";
-import { X } from "lucide-react";
+import { X, Search, Calendar, Flag, ChevronDown, Check } from "lucide-react";
 import DocumentTableSkeleton from "../components/skeletons/DocumentTableSkeleton";
+import { Calendar as CalendarComponent } from "../components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover";
+import { format } from "date-fns";
 
 // Last 60 Days
 function getDefaultDates() {
@@ -82,6 +85,13 @@ export default function Documents() {
 
   const [statusFilter, setStatusFilter] = useState("all"); // all | seen | unseen
   const [categoryFilter, setCategoryFilter] = useState(null); // C D F
+  const [flagFilter, setFlagFilter] = useState(null); // null | true | false (null = all)
+  const [showDocumentTypeDropdown, setShowDocumentTypeDropdown] = useState(false);
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const [dateRange, setDateRange] = useState({
+    from: new Date(start),
+    to: new Date(end),
+  });
 
   // Debounce search input
   useEffect(() => {
@@ -106,6 +116,11 @@ export default function Documents() {
     return categoryFilter || null;
   }, [categoryFilter]);
 
+  // Convert flag filter to API format
+  const isFlaggedParam = useMemo(() => {
+    return flagFilter !== null ? flagFilter : null;
+  }, [flagFilter]);
+
   // Convert document type filters to API format
   // These are sent as multiple "type" parameters
   const typeFilters = useMemo(() => {
@@ -120,6 +135,7 @@ export default function Documents() {
       lastFetchParams.endDate !== endDate ||
       lastFetchParams.search !== searchDebounced ||
       lastFetchParams.isSeen !== isSeenParam ||
+      lastFetchParams.isFlagged !== isFlaggedParam ||
       lastFetchParams.category !== categoryParam ||
       JSON.stringify(lastFetchParams.filters || []) !== JSON.stringify(typeFilters);
 
@@ -135,6 +151,7 @@ export default function Documents() {
           limit: 20,
           search: searchDebounced,
           isSeen: isSeenParam,
+          isFlagged: isFlaggedParam,
           category: categoryParam,
           filters: typeFilters,
         })
@@ -146,6 +163,7 @@ export default function Documents() {
     endDate,
     searchDebounced,
     isSeenParam,
+    isFlaggedParam,
     categoryParam,
     typeFilters,
     lastFetchParams,
@@ -192,7 +210,34 @@ export default function Documents() {
     const { start, end } = getDefaultDates();
     setStartDate(start);
     setEndDate(end);
+    setDateRange({
+      from: new Date(start),
+      to: new Date(end),
+    });
   }
+
+  // Handle date range change from calendar
+  const handleDateRangeChange = (range) => {
+    setDateRange(range);
+    if (range?.from && range?.to) {
+      const formatDate = (d) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+      setStartDate(formatDate(range.from));
+      setEndDate(formatDate(range.to));
+    } else if (range?.from) {
+      const formatDate = (d) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+      setStartDate(formatDate(range.from));
+    }
+  };
 
   // Group documents by date
   const groupedDocuments = useMemo(() => {
@@ -255,6 +300,7 @@ export default function Documents() {
           limit: 20,
           search: searchDebounced,
           isSeen: isSeenParam,
+          isFlagged: isFlaggedParam,
           category: categoryParam,
           filters: typeFilters,
         })
@@ -270,6 +316,7 @@ export default function Documents() {
     page,
     searchDebounced,
     isSeenParam,
+    isFlaggedParam,
     categoryParam,
     typeFilters,
   ]);
@@ -304,9 +351,8 @@ export default function Documents() {
   return (
     <div className="text-white h-full overflow-hidden flex flex-col p-4">
 
-
-      {/* CHIP FILTER INPUT */}
-      <div className="mb-5">
+      {/* CHIP FILTER INPUT - Document Type Filters */}
+      <div className="mb-4">
         {/* Selected Filters as Chips */}
         {selectedFilters.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-3">
@@ -317,12 +363,12 @@ export default function Documents() {
               return (
                 <div
                   key={filterValue}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-600 text-white text-sm"
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#1f6feb] text-white text-sm"
                 >
                   <span>{filterLabel}</span>
                   <button
                     onClick={() => removeFilter(filterValue)}
-                    className="hover:bg-blue-700 rounded-full p-0.5 transition-colors"
+                    className="hover:bg-[#1a5fd4] rounded-full p-0.5 transition-colors"
                     aria-label={`Remove ${filterLabel} filter`}
                   >
                     <X className="h-3.5 w-3.5" />
@@ -344,10 +390,11 @@ export default function Documents() {
                 onClick={() => toggleFilter(filterValue)}
                 variant={isSelected ? "default" : "outline"}
                 size="sm"
-                className={`rounded-full ${isSelected
-                    ? "bg-blue-600 border-blue-600 text-white"
-                    : "border-gray-600 bg-white text-black"
-                  }`}
+                className={`rounded-full ${
+                  isSelected
+                    ? "bg-[#1f6feb] border-[#1f6feb] text-white"
+                    : "border-gray-600 bg-[#161b22] text-gray-300 hover:bg-[#1d232a]"
+                }`}
               >
                 {item}
               </Button>
@@ -356,108 +403,222 @@ export default function Documents() {
         </div>
       </div>
 
-      {/* STATUS + CATEGORY FILTER ROW */}
-      <div className="flex items-center gap-4 mb-4">
+      {/* FILTER BAR - Horizontal Layout matching image */}
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
+        {/* Search Bar */}
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            type="text"
+            placeholder="Search by driver name"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full bg-[#1d232a] pl-9 border-gray-700 text-gray-300 placeholder:text-gray-500"
+          />
+        </div>
 
-        {/* STATUS */}
-        <span>Status:</span>
-        <Button
-          onClick={() => setStatusFilter("all")}
-          variant={statusFilter === "all" ? "default" : "secondary"}
-          size="sm"
-        >
-          All
-        </Button>
-
-        <Button
-          onClick={() => setStatusFilter("unseen")}
-          variant={statusFilter === "unseen" ? "default" : "secondary"}
-          size="sm"
-          className="flex items-center gap-2"
-        >
-          Unseen
-        </Button>
-
-        <Button
-          onClick={() => setStatusFilter("seen")}
-          variant={statusFilter === "seen" ? "default" : "secondary"}
-          size="sm"
-          className="flex items-center gap-2"
-        >
-          Seen
-        </Button>
-
-        {/* CATEGORY */}
-        <span className="ml-6">Category:</span>
-
+        {/* Category Filters (C, D, F) */}
         {["C", "D", "F"].map((cat) => (
           <Button
             key={cat}
-            onClick={() => setCategoryFilter(cat)}
-            variant={categoryFilter === cat ? "default" : "secondary"}
+            onClick={() => setCategoryFilter(categoryFilter === cat ? null : cat)}
+            variant={categoryFilter === cat ? "default" : "outline"}
             size="sm"
+            className={`min-w-[40px] h-9 ${
+              categoryFilter === cat
+                ? "bg-[#1f6feb] text-white border-[#1f6feb] hover:bg-[#1a5fd4]"
+                : "bg-[#161b22] border-gray-700 text-gray-300 hover:bg-[#1d232a] hover:border-gray-600"
+            }`}
           >
             {cat}
           </Button>
         ))}
 
-        {categoryFilter && (
-          <Button
-            onClick={() => setCategoryFilter(null)}
-            variant="secondary"
-            size="sm"
-          >
-            Reset
-          </Button>
-        )}
-      </div>
+        {/* All Documents Dropdown with Status Filter */}
+        <div className="relative">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setShowDocumentTypeDropdown(!showDocumentTypeDropdown);
+                setShowStatusDropdown(false);
+              }}
+              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white transition-colors border-b border-gray-700 hover:border-gray-600"
+            >
+              <span>All Documents</span>
+              <ChevronDown className={`h-4 w-4 transition-transform ${showDocumentTypeDropdown ? "rotate-180" : ""}`} />
+            </button>
+            {(selectedFilters.length > 0 || statusFilter !== "all") && (
+              <button
+                onClick={() => {
+                  setSelectedFilters([]);
+                  setStatusFilter("all");
+                  setShowDocumentTypeDropdown(false);
+                  setShowStatusDropdown(false);
+                }}
+                className="text-gray-400 hover:text-white transition-colors p-1 rounded-full hover:bg-[#1d232a]"
+                aria-label="Clear filters"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
 
-      {/* SEARCH BAR */}
-      <div className="mb-4">
-        <Input
-          type="text"
-          placeholder="Search documents..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full bg-[#1d232a]"
-        />
-      </div>
-      <div className="flex gap-3 items-center mb-4 shrink-0">
-        <span>Date Range:</span>
+          {/* Dropdown Menu */}
+          {showDocumentTypeDropdown && (
+            <>
+              <div
+                className="fixed inset-0 z-10"
+                onClick={() => setShowDocumentTypeDropdown(false)}
+              />
+              <div className="absolute top-full left-0 mt-1 bg-[#161b22] border border-gray-700 rounded-md shadow-lg z-20 min-w-[200px]">
+                {/* Status Filter Section */}
+                <div className="border-b border-gray-700">
+                  <div className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    Status
+                  </div>
+                  {["all", "seen", "unseen"].map((status) => (
+                    <button
+                      key={status}
+                      onClick={() => {
+                        setStatusFilter(status);
+                        setShowStatusDropdown(false);
+                      }}
+                      className={`w-full text-left px-4 py-2 text-sm hover:bg-[#1d232a] transition-colors flex items-center gap-2 ${
+                        statusFilter === status ? "text-[#1f6feb] bg-[#1d232a]" : "text-gray-300"
+                      }`}
+                    >
+                      <span className={`w-4 h-4 border rounded flex items-center justify-center ${
+                        statusFilter === status ? "border-[#1f6feb] bg-[#1f6feb]" : "border-gray-600"
+                      }`}>
+                        {statusFilter === status && <Check className="h-3 w-3 text-white" />}
+                      </span>
+                      {status.charAt(0).toUpperCase() + status.slice(1)}
+                    </button>
+                  ))}
+                </div>
 
-        <Input
-          type="date"
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-          className="bg-[#1d232a]"
-        />
+                {/* Document Type Filter Section */}
+                <div className="max-h-[200px] overflow-y-auto">
+                  <div className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    Document Types
+                  </div>
+                  {Object.keys(FILTER_MAP).map((item) => {
+                    const filterValue = FILTER_MAP[item];
+                    const isSelected = selectedFilters.includes(filterValue);
+                    return (
+                      <button
+                        key={item}
+                        onClick={() => toggleFilter(filterValue)}
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-[#1d232a] transition-colors flex items-center gap-2 ${
+                          isSelected ? "text-[#1f6feb] bg-[#1d232a]" : "text-gray-300"
+                        }`}
+                      >
+                        <span className={`w-4 h-4 border rounded flex items-center justify-center ${
+                          isSelected ? "border-[#1f6feb] bg-[#1f6feb]" : "border-gray-600"
+                        }`}>
+                          {isSelected && <Check className="h-3 w-3 text-white" />}
+                        </span>
+                        {item}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
 
-        <span>to</span>
-
-        <Input
-          type="date"
-          value={endDate}
-          onChange={(e) => setEndDate(e.target.value)}
-          className="bg-[#1d232a]"
-        />
-
+        {/* Flag Filter */}
         <Button
-          onClick={resetDates}
-          variant="secondary"
+          onClick={() => {
+            setFlagFilter(flagFilter === null ? true : null);
+          }}
+          variant="outline"
           size="sm"
-          className="ml-3"
+          className={`h-9 px-3 ${
+            flagFilter === true
+              ? "bg-[#1f6feb] text-white border-[#1f6feb] hover:bg-[#1a5fd4]"
+              : "bg-[#161b22] border-gray-700 text-gray-400 hover:bg-[#1d232a] hover:border-gray-600 hover:text-gray-300"
+          }`}
+          title={flagFilter === true ? "Show flagged only" : "Show all documents"}
         >
-          Reset
+          <Flag className={`h-4 w-4 ${flagFilter === true ? "text-white" : "text-gray-400"}`} />
         </Button>
+
+        {/* Date Range Picker */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={`h-9 px-3 bg-[#1d232a] border-gray-700 text-gray-300 hover:bg-[#161b22] hover:border-gray-600 ${
+                dateRange?.from && dateRange?.to ? "text-[#1f6feb]" : ""
+              }`}
+            >
+              <Calendar className="mr-2 h-4 w-4" />
+              {dateRange?.from ? (
+                dateRange.to ? (
+                  <>
+                    {format(dateRange.from, "LLL dd, y")} -{" "}
+                    {format(dateRange.to, "LLL dd, y")}
+                  </>
+                ) : (
+                  format(dateRange.from, "LLL dd, y")
+                )
+              ) : (
+                <span>Pick a date range</span>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0 bg-[#161b22] border-gray-700" align="start">
+            <CalendarComponent
+              initialFocus
+              mode="range"
+              defaultMonth={dateRange?.from}
+              selected={dateRange}
+              onSelect={handleDateRangeChange}
+              numberOfMonths={2}
+              className="bg-[#161b22] text-white"
+            />
+            <div className="p-3 border-t border-gray-700 flex items-center justify-between">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={resetDates}
+                className="bg-[#1d232a] border-gray-700 text-gray-300 hover:bg-[#161b22]"
+              >
+                Reset
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (dateRange?.from && dateRange?.to) {
+                    const formatDate = (d) => {
+                      const year = d.getFullYear();
+                      const month = String(d.getMonth() + 1).padStart(2, '0');
+                      const day = String(d.getDate()).padStart(2, '0');
+                      return `${year}-${month}-${day}`;
+                    };
+                    setStartDate(formatDate(dateRange.from));
+                    setEndDate(formatDate(dateRange.to));
+                  }
+                }}
+                className="bg-[#1f6feb] border-[#1f6feb] text-white hover:bg-[#1a5fd4]"
+              >
+                Apply
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
 
       {/* MAIN LAYOUT */}
-      <div className="flex-1 bg-[#161b22] p-4 rounded-lg border border-gray-700 overflow-hidden flex flex-col">
+        <div className="flex-1 bg-[#161b22] p-4 rounded-lg border border-gray-700 overflow-hidden flex flex-col">
 
-        {/* Date Filter (FIXED) */}
+  {/* Date Filter (FIXED) */}
 
 
-        {/* 📜 TABLE (ONLY THIS SCROLLS) */}
+  {/* 📜 TABLE (ONLY THIS SCROLLS) */}
         <div className="flex-1 overflow-y-auto chat-list-scroll">
           <Table>
             <TableHeader className="sticky top-0 bg-[#161b22] z-10 border-b border-gray-700">
@@ -545,7 +706,7 @@ export default function Documents() {
                             <span className="text-xs text-gray-400">
                               {doc.seen === false ? "Unseen" : doc.seen === true ? "Seen" : "Unknown"}
                             </span>
-                          </div>
+      </div>
                         </TableCell>
                         <TableCell className="px-4 py-3">
                           <div className="flex items-center gap-3">
@@ -570,7 +731,7 @@ export default function Documents() {
                               dateStyle: "short",
                               timeStyle: "short",
                             })}
-                          </div>
+      </div>
                         </TableCell>
                         <TableCell className="px-4 py-3">
                           <span className="text-sm text-gray-300">{doc.type || "—"}</span>
@@ -594,7 +755,7 @@ export default function Documents() {
                       <div className="flex items-center justify-center gap-2 text-gray-400">
                         <div className="w-4 h-4 border-2 border-gray-600 border-t-blue-500 rounded-full animate-spin" />
                         <span className="text-xs">Loading more documents...</span>
-                      </div>
+      </div>
                     )}
                   </TableCell>
                 </TableRow>
@@ -622,10 +783,10 @@ export default function Documents() {
                   <span>
                     Selected: <span className="font-semibold text-blue-400">{selectedDocIds.size}</span>
                   </span>
-                )}
-              </div>
-              
-            </div>
+    )}
+  </div>
+
+</div>
           )}
         </div>
       </div>
