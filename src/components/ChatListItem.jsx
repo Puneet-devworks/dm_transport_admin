@@ -67,7 +67,9 @@ const ChatListItem = ({ driver, onClick, isSelected }) => {
         <p className={`text-xs truncate ${
           unreadCount > 0 ? "text-gray-300 font-medium" : "text-gray-400"
         }`}>
-          {driver.last_message || "No messages yet"}
+          {driver.last_message && driver.last_message.trim() !== "" 
+            ? driver.last_message 
+            : "No messages yet"}
         </p>
       </div>
 

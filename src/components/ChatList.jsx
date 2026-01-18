@@ -11,12 +11,14 @@ const ChatList = ({ onSelectDriver, selectedDriver, chatApi }) => {
   const { users, loading, loadingMore, lastFetched, hasMore, page, limit, lastSearch } = useAppSelector(
     (state) => state.users
   );
+  // console.log(users);
   const [search, setSearch] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
   const observerTarget = useRef(null);
   const hasInitiallyFetched = useRef(false);
-  const [fetchingMessages, setFetchingMessages] = useState(new Set());
+  const [isFetchingMessages, setIsFetchingMessages] = useState(false); // Track if we're fetching messages for sorting
   const fetchedUsersRef = useRef(new Set()); // Track users we've already fetched messages for
+  const isMountedRef = useRef(false); // Track if component is mounted
   const [unreadCounts, setUnreadCounts] = useState({}); // Track unread counts per user
   const unsubscribeUnreadRefs = useRef({}); // Track unsubscribe functions for unread counts
   
@@ -49,13 +51,27 @@ const ChatList = ({ onSelectDriver, selectedDriver, chatApi }) => {
     return () => clearTimeout(timer);
   }, [search]);
 
-  // Initial fetch on mount
+  // FIX: Clear cache when component mounts/remounts (navigate back)
+  useEffect(() => {
+    if (!isMountedRef.current) {
+      isMountedRef.current = true;
+      // Clear cache on mount to allow fresh fetch when navigating back
+      fetchedUsersRef.current.clear();
+    }
+    
+    return () => {
+      // Don't clear on unmount - keep cache for better performance
+      // Cache will be cleared on next mount
+    };
+  }, []);
+
+  // Initial fetch on mount - fetch all users with limit=-1
   useEffect(() => {
     if (!hasInitiallyFetched.current && !loading) {
       hasInitiallyFetched.current = true;
-      dispatch(fetchUsers({ page: 1, limit }));
+      dispatch(fetchUsers({ page: 1, limit: -1 }));
     }
-  }, [dispatch, limit, loading]);
+  }, [dispatch, loading]);
 
   // Refetch when search changes
   useEffect(() => {
@@ -64,11 +80,12 @@ const ChatList = ({ onSelectDriver, selectedDriver, chatApi }) => {
     const lastSearchValue = lastSearch !== undefined ? lastSearch : undefined;
     
     if (searchValue !== lastSearchValue && !loading && hasInitiallyFetched.current) {
-      // Clear fetched users cache when search changes to allow refetching
+      // Clear fetched users cache when search changes to allow refetching messages
       fetchedUsersRef.current.clear();
-      dispatch(fetchUsers({ page: 1, limit, search: searchValue }));
+      setIsFetchingMessages(false); // Reset fetching state
+      dispatch(fetchUsers({ page: 1, limit: -1, search: searchValue }));
     }
-  }, [dispatch, limit, searchDebounced, lastSearch, loading]);
+  }, [dispatch, searchDebounced, lastSearch, loading]);
 
   // Infinite scroll observer - prevent duplicate calls
   const isLoadingRef = useRef(false);
@@ -114,60 +131,90 @@ const ChatList = ({ onSelectDriver, selectedDriver, chatApi }) => {
     };
   }, [handleLoadMore, hasMore, loadingMore, loading]);
 
-  // Fetch last message for users that don't have one
+  // Fetch last message for ALL users, then show sorted list (prevents reordering UX issue)
   useEffect(() => {
-    if (!users?.length || !fetchMessages) return;
+    if (!users?.length || !fetchMessages || loading) return;
 
-    const fetchLastMessages = async () => {
+    const fetchAllLastMessages = async () => {
+      // Don't fetch if we're already fetching
+      if (isFetchingMessages) return;
+
+      // Find all users that need message fetching
+      // FIX: Always fetch from Firebase to get actual message text, even if backend has timestamp
+      // Backend might have timestamp but not message text, so we need to fetch to show proper message
       const usersToFetch = users.filter((u) => {
         const userId = getDriverId(u);
         if (!userId) return false;
-        // Only fetch if:
-        // 1. User doesn't have last_message from API
-        // 2. We haven't already fetched for this user
-        // 3. We're not currently fetching for this user
-        return (
-          !u.last_message &&
-          !fetchedUsersRef.current.has(userId) &&
-          !fetchingMessages.has(userId)
-        );
-      });
-
-      if (usersToFetch.length === 0) return;
-
-      // Mark users as being fetched
-      const newFetchingSet = new Set(fetchingMessages);
-      usersToFetch.forEach((u) => {
-        const userId = getDriverId(u);
-        if (userId) {
-          newFetchingSet.add(userId);
-          fetchedUsersRef.current.add(userId);
+        
+        // FIX: Always fetch if message text is missing, even if we've fetched before
+        // This handles the case where backend has timestamp but not message text
+        const hasMessageText = u.last_message !== undefined && 
+                              u.last_message !== null && 
+                              u.last_message.trim() !== "";
+        
+        // If we've already fetched AND have message text, skip
+        if (fetchedUsersRef.current.has(userId) && hasMessageText) {
+          return false;
         }
+        
+        // Fetch if:
+        // 1. We haven't fetched yet, OR
+        // 2. We've fetched but message text is missing (need to get it from Firebase)
+        return true;
       });
-      setFetchingMessages(newFetchingSet);
 
-      // Fetch messages for all users in parallel (with a limit to avoid too many requests)
-      const fetchPromises = usersToFetch.slice(0, 10).map(async (u) => {
-        const userId = getDriverId(u);
-        if (!userId) return null;
+      if (usersToFetch.length === 0) {
+        // All users already have messages (from backend or cached), no need to show loading
+        return;
+      }
 
-        try {
-          const { messages } = await fetchMessages(userId);
-          if (messages && messages.length > 0) {
-            const lastMessage = messages[messages.length - 1];
-            const lastMessageText = lastMessage?.content?.message || "";
-            const lastChatTime = lastMessage?.dateTime || null;
+      // Set loading state - this will hide the list until sorting is complete
+      setIsFetchingMessages(true);
 
-            // Update Redux store with last message
-            dispatch(
-              updateUserLastMessage({
-                userid: userId,
-                lastMessage: lastMessageText,
-                lastChatTime: lastChatTime,
-              })
-            );
-          } else {
-            // Even if no messages, mark as fetched to avoid refetching
+      try {
+        // Fetch messages for ALL users in parallel - only fetch 1 message to get lastMessageTime
+        const fetchPromises = usersToFetch.map(async (u) => {
+          const userId = getDriverId(u);
+          if (!userId) return null;
+
+          try {
+            // Fetch only 1 message (just to get last message time) - fastest!
+            // FIX: fetchMessages now fetches 20 messages, sorts by timestamp, and returns the most recent
+            const { messages } = await fetchMessages(userId, 1);
+            if (messages && messages.length > 0) {
+              // Messages are already sorted ascending by fetchMessages, so last element is most recent
+              const lastMessage = messages[messages.length - 1];
+              
+              // FIX: Get actual message text - check both content.message and message fields
+              const lastMessageText = lastMessage?.content?.message || 
+                                    lastMessage?.message || 
+                                    (lastMessage?.content ? "" : "");
+              const lastChatTime = lastMessage?.dateTime || null;
+
+              // Update Redux store with last message
+              dispatch(
+                updateUserLastMessage({
+                  userid: userId,
+                  lastMessage: lastMessageText,
+                  lastChatTime: lastChatTime,
+                })
+              );
+            } else {
+              // Even if no messages, mark as fetched
+              dispatch(
+                updateUserLastMessage({
+                  userid: userId,
+                  lastMessage: "",
+                  lastChatTime: null,
+                })
+              );
+            }
+            fetchedUsersRef.current.add(userId);
+          } catch (error) {
+            console.error(`Failed to fetch messages for user ${userId}:`, error);
+            // On error, still mark as fetched to avoid infinite retries
+            fetchedUsersRef.current.add(userId);
+            // Set empty values on error
             dispatch(
               updateUserLastMessage({
                 userid: userId,
@@ -176,25 +223,18 @@ const ChatList = ({ onSelectDriver, selectedDriver, chatApi }) => {
               })
             );
           }
-        } catch (error) {
-          console.error(`Failed to fetch messages for user ${userId}:`, error);
-          // On error, still mark as fetched to avoid infinite retries
-          fetchedUsersRef.current.add(userId);
-        } finally {
-          // Remove from fetching set
-          setFetchingMessages((prev) => {
-            const next = new Set(prev);
-            next.delete(userId);
-            return next;
-          });
-        }
-      });
+        });
 
-      await Promise.all(fetchPromises);
+        // Wait for ALL messages to be fetched
+        await Promise.all(fetchPromises);
+      } finally {
+        // All messages fetched and sorted - now show the list
+        setIsFetchingMessages(false);
+      }
     };
 
-    fetchLastMessages();
-  }, [users, fetchMessages, dispatch, fetchingMessages]);
+    fetchAllLastMessages();
+  }, [users, fetchMessages, dispatch, loading, isFetchingMessages]);
 
   // Subscribe to unread counts for all users
   useEffect(() => {
@@ -243,6 +283,7 @@ const ChatList = ({ onSelectDriver, selectedDriver, chatApi }) => {
   // Transform users from Redux to drivers format
   const drivers = useMemo(() => {
     if (!users?.length) return [];
+   
 
     const withLastChat = users
       .map((u) => {
@@ -250,6 +291,8 @@ const ChatList = ({ onSelectDriver, selectedDriver, chatApi }) => {
         if (!userId) {
           return null;
         }
+        
+        // console.log(u.last_chat_time);
 
         return {
           userid: userId,
@@ -263,9 +306,17 @@ const ChatList = ({ onSelectDriver, selectedDriver, chatApi }) => {
       })
       .filter(Boolean);
 
-    // 🔥 SORT → latest chat first, but prioritize unread messages
+    // 🔥 SORT → latest chat first (by timestamp only, no unread priority)
     const driversWithIds = withLastChat.filter(Boolean);
-
+    driversWithIds.sort((a, b) => {
+      // Sort only by last chat time (newest first)
+      if (!a.last_chat_time) return 1;
+      if (!b.last_chat_time) return -1;
+      return (
+        new Date(b.last_chat_time).getTime() -
+        new Date(a.last_chat_time).getTime()
+      );
+    });
    
 
     return driversWithIds;
@@ -290,11 +341,13 @@ const ChatList = ({ onSelectDriver, selectedDriver, chatApi }) => {
 
       {/* 📜 DRIVER LIST (ONLY THIS SCROLLS) */}
       <div className="flex-1 overflow-y-auto chat-list-scroll">
-        {/* Initial loading skeleton - only show on first load */}
-        {loading && users.length === 0 && <SkeletonLoader count={10} />}
+        {/* Show loading skeleton while fetching users OR fetching messages for sorting */}
+        {(loading || isFetchingMessages) && (
+          <SkeletonLoader count={10} />
+        )}
 
-        {/* Show list items - even when loading more */}
-        {!loading && filtered.length > 0 && (
+        {/* Show sorted list ONLY after messages are fetched and sorted (prevents reordering UX issue) */}
+        {!loading && !isFetchingMessages && filtered.length > 0 && (
           <>
             {filtered.map((driver) => (
               <ChatListItem
@@ -307,22 +360,8 @@ const ChatList = ({ onSelectDriver, selectedDriver, chatApi }) => {
           </>
         )}
 
-        {/* Show existing items while loading more */}
-        {loading && users.length > 0 && (
-          <>
-            {filtered.map((driver) => (
-              <ChatListItem
-                key={driver.userid}
-                driver={driver}
-                isSelected={selectedDriverId === driver.userid}
-                onClick={() => onSelectDriver(driver)}
-              />
-            ))}
-          </>
-        )}
-
-        {/* Infinite scroll trigger - only show when hasMore */}
-        {hasMore && !loading && (
+        {/* Infinite scroll trigger - only show when hasMore (disabled since we fetch all) */}
+        {hasMore && !loading && !isFetchingMessages && (
           <div 
             ref={observerTarget} 
             className="h-16 flex items-center justify-center py-2"
@@ -339,14 +378,14 @@ const ChatList = ({ onSelectDriver, selectedDriver, chatApi }) => {
         )}
 
         {/* Empty state */}
-        {!loading && users.length === 0 && filtered.length === 0 && (
+        {!loading && !isFetchingMessages && users.length === 0 && filtered.length === 0 && (
           <p className="text-center text-gray-500 text-sm mt-4">
             No drivers found
           </p>
         )}
 
         {/* No more to load */}
-        {!hasMore && !loading && !loadingMore && filtered.length > 0 && (
+        {!hasMore && !loading && !loadingMore && !isFetchingMessages && filtered.length > 0 && (
           <p className="text-center text-gray-500 text-xs mt-2 py-2">
             All drivers loaded
           </p>

@@ -2,6 +2,7 @@ import {
   get,
   limitToLast,
   onValue,
+  orderByChild,
   push,
   query,
   ref,
@@ -77,26 +78,40 @@ export async function fetchUsersForChat() {
   return { users };
 }
 
-export async function fetchMessages(userid) {
+export async function fetchMessages(userid, messageLimit = 10) {
+  // FIX: Fetch more messages and sort by timestamp to get the actual most recent
+  // limitToLast() uses Firebase key order, not timestamp order, so we need to sort
+  // Fetch more messages (20) to ensure we get the most recent even if keys are out of order
+  const fetchLimit = messageLimit === 1 ? 20 : messageLimit; // Fetch more if we only need 1
+  
   const messagesRef = query(
     ref(database, `${ADMIN_GENERAL_PATH}/${userid}`),
-    limitToLast(100)
+    limitToLast(fetchLimit)
   );
+  
   const snapshot = await get(messagesRef);
   const messagesObject = snapshot.exists() ? snapshot.val() : {};
 
+  // Sort all messages by dateTime to get the actual most recent
   const messages = sortByDateTimeAsc(
     Object.entries(messagesObject).map(([id, msg]) =>
       normalizeMessage(id, msg)
     )
   );
 
-  return { messages };
+  // If we only need 1 message, return just the most recent (last in sorted array)
+  if (messageLimit === 1 && messages.length > 0) {
+    return { messages: [messages[messages.length - 1]] };
+  }
+
+  // Return the last N messages (most recent)
+  return { messages: messages.slice(-messageLimit) };
 }
 
 export function subscribeMessages(userid, onChange) {
   const messagesRef = query(
     ref(database, `${ADMIN_GENERAL_PATH}/${userid}`),
+    
     limitToLast(100)
   );
 
