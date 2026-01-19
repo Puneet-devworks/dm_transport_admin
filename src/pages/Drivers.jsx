@@ -19,137 +19,6 @@ import { useDriversQuery } from "../services/driverQueries";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 
-const initialDrivers = [
-  {
-    id: "DRV-221",
-    name: "Deepak Jeed",
-    phone: "(313) 819-6325",
-    country: "CA",
-    category: "C",
-    status: "active",
-    lastSeen: "5m ago",
-    email: "deepak.jeed@dmtransport.io",
-    location: "Winnipeg, MB",
-    route: "Calgary → Toronto",
-    loadsCompleted: 42,
-    rating: 4.8,
-    complianceScore: 92,
-    maintenanceChat: true,
-  },
-  {
-    id: "DRV-284",
-    name: "Raman Montreal",
-    phone: "(416) 456-0737",
-    country: "CA",
-    category: "C",
-    status: "active",
-    lastSeen: "12m ago",
-    email: "raman.montreal@dmtransport.io",
-    location: "Montreal, QC",
-    route: "Montreal → Boston",
-    loadsCompleted: 38,
-    rating: 4.6,
-    complianceScore: 88,
-    maintenanceChat: false,
-  },
-  {
-    id: "DRV-295",
-    name: "Amandeep Singh",
-    phone: "(204) 899-0384",
-    country: "CA",
-    category: "C",
-    status: "active",
-    lastSeen: "30m ago",
-    email: "amandeep.singh@dmtransport.io",
-    location: "Regina, SK",
-    route: "Saskatoon → Edmonton",
-    loadsCompleted: 28,
-    rating: 4.3,
-    complianceScore: 90,
-    maintenanceChat: true,
-  },
-  {
-    id: "DRV-307",
-    name: "Birnishan",
-    phone: "(204) 210-0003",
-    country: "CA",
-    category: "D",
-    status: "inactive",
-    lastSeen: "2 days ago",
-    email: "birnishan@dmtransport.io",
-    location: "Winnipeg, MB",
-    route: "Winnipeg → Fargo",
-    loadsCompleted: 64,
-    rating: 4.1,
-    complianceScore: 75,
-    maintenanceChat: false,
-  },
-  {
-    id: "DRV-318",
-    name: "Hardeep Saini",
-    phone: "(647) 720-0423",
-    country: "CA",
-    category: "C",
-    status: "active",
-    lastSeen: "1h ago",
-    email: "hardeep.saini@dmtransport.io",
-    location: "Brampton, ON",
-    route: "Toronto → Detroit",
-    loadsCompleted: 57,
-    rating: 4.5,
-    complianceScore: 86,
-    maintenanceChat: true,
-  },
-  {
-    id: "DRV-325",
-    name: "Haradev City 764",
-    phone: "(404) 937-0694",
-    country: "US",
-    category: "F",
-    status: "active",
-    lastSeen: "3h ago",
-    email: "haradev.city@dmtransport.io",
-    location: "Chicago, IL",
-    route: "Chicago → Atlanta",
-    loadsCompleted: 33,
-    rating: 4.0,
-    complianceScore: 82,
-    maintenanceChat: false,
-  },
-  {
-    id: "DRV-332",
-    name: "Jaswinder K",
-    phone: "(204) 891-2692",
-    country: "CA",
-    category: "C",
-    status: "active",
-    lastSeen: "6h ago",
-    email: "jaswinder.k@dmtransport.io",
-    location: "Calgary, AB",
-    route: "Calgary → Vancouver",
-    loadsCompleted: 49,
-    rating: 4.7,
-    complianceScore: 95,
-    maintenanceChat: true,
-  },
-  {
-    id: "DRV-340",
-    name: "Joseph Correya",
-    phone: "(905) 325-3005",
-    country: "CA",
-    category: "D",
-    status: "inactive",
-    lastSeen: "5 days ago",
-    email: "joseph.correya@dmtransport.io",
-    location: "Burlington, ON",
-    route: "Hamilton → New York",
-    loadsCompleted: 71,
-    rating: 3.9,
-    complianceScore: 70,
-    maintenanceChat: false,
-  },
-];
-
 const statusStyles = {
   active: "bg-emerald-500/15 text-emerald-300 border-emerald-500/20",
   inactive: "bg-rose-500/15 text-rose-300 border-rose-500/20",
@@ -171,7 +40,7 @@ function formatPhone(phone) {
 }
 
 function formatRelativeTime(date) {
-  if (!date) return "—";
+  if (!date || Number.isNaN(date.getTime())) return "—";
   const delta = Date.now() - date.getTime();
   const minutes = Math.floor(delta / 60000);
 
@@ -184,6 +53,7 @@ function formatRelativeTime(date) {
 }
 
 function getInitials(name) {
+  if (!name) return "—";
   return name
     .split(" ")
     .map((part) => part[0])
@@ -193,12 +63,16 @@ function getInitials(name) {
 }
 
 export default function Drivers() {
-  const [drivers, setDrivers] = useState(initialDrivers);
+  const [drivers, setDrivers] = useState([]);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
-  const [selectedId, setSelectedId] = useState(initialDrivers[0]?.id ?? null);
+  const [selectedId, setSelectedId] = useState(null);
   const [activeModal, setActiveModal] = useState(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const limit = 20;
   const [formState, setFormState] = useState({
     name: "",
     email: "",
@@ -211,27 +85,68 @@ export default function Drivers() {
   const [passwordState, setPasswordState] = useState({
     password: "",
   });
-  const { data: driverData = [], isLoading, isError } = useDriversQuery();
-
-  const mergedDrivers = useMemo(() => {
-    if (driverData.length > 0) {
-      return driverData.map((driver) => ({
-        ...driver,
-        phone: formatPhone(driver.phone || driver.id),
-        lastSeenLabel: formatRelativeTime(driver.lastSeen),
-      }));
-    }
-
-    return initialDrivers.map((driver) => ({
-      ...driver,
-      lastSeenLabel: driver.lastSeen,
-    }));
-  }, [driverData]);
+  const {
+    data: driverData,
+    isLoading,
+    isError,
+    isFetching,
+    refetch,
+  } = useDriversQuery({ page, limit, search: debouncedSearch });
 
   useEffect(() => {
-    if (isLoading || isError) return;
-    setDrivers(mergedDrivers);
-  }, [isLoading, isError, mergedDrivers]);
+    const timeout = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 300);
+
+    return () => clearTimeout(timeout);
+  }, [search]);
+
+  useEffect(() => {
+    setDrivers([]);
+    setSelectedId(null);
+  }, [debouncedSearch]);
+
+  useEffect(() => {
+    if (!driverData) return;
+    const incoming = driverData.users.map((driver) => ({
+      ...driver,
+      phone: formatPhone(driver.phone || driver.id),
+      lastSeenLabel: formatRelativeTime(driver.lastSeen),
+    }));
+
+    const pagination = driverData.pagination || {};
+    const derivedHasMore =
+      pagination.hasMore ??
+      (pagination.currentPage && pagination.totalPages
+        ? pagination.currentPage < pagination.totalPages
+        : incoming.length === limit);
+    setHasMore(Boolean(derivedHasMore));
+
+    if (page === 1) {
+      setDrivers(incoming);
+      return;
+    }
+
+    setDrivers((prev) => {
+      const merged = [];
+      const seen = new Set();
+
+      const addDriver = (driver) => {
+        const key = driver.id || driver.phone;
+        if (key) {
+          if (seen.has(key)) return;
+          seen.add(key);
+        }
+        merged.push(driver);
+      };
+
+      prev.forEach(addDriver);
+      incoming.forEach(addDriver);
+
+      return merged;
+    });
+  }, [driverData, page, limit]);
 
   useEffect(() => {
     if (drivers.length === 0) return;
@@ -278,6 +193,9 @@ export default function Drivers() {
       ratings.reduce((total, rating) => total + rating, 0) / ratings.length;
     return avg.toFixed(1);
   }, [drivers]);
+
+  const isInitialLoading = isLoading && drivers.length === 0;
+  const isLoadingMore = isFetching && page > 1;
 
   function toggleMaintenanceChat() {
     if (!selectedDriver) return;
@@ -443,73 +361,110 @@ export default function Drivers() {
           </div>
 
           <div className="drivers-scroll flex-1 overflow-y-auto">
-            {isLoading && (
-              <div className="px-4 py-6 text-sm text-slate-400">
-                Loading drivers…
+            {isInitialLoading && (
+              <div className="space-y-3 px-4 py-6">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <div
+                    key={`skeleton-${index}`}
+                    className="h-10 w-full animate-pulse rounded-xl bg-slate-900/70"
+                  />
+                ))}
               </div>
             )}
-            {isError && (
-              <div className="px-4 py-6 text-sm text-rose-300">
-                Unable to load drivers. Showing cached view.
-              </div>
-            )}
-            {filteredDrivers.map((driver) => {
-              const isSelected = driver.id === selectedId;
-              return (
-                <button
-                  key={driver.id}
+            {isError && !isInitialLoading && (
+              <div className="flex flex-col gap-3 px-4 py-6 text-sm text-rose-300">
+                <span>Unable to load drivers.</span>
+                <Button
                   type="button"
-                  onClick={() => setSelectedId(driver.id)}
-                  className={`grid w-full grid-cols-12 items-center gap-2 border-b border-slate-900 px-4 py-3 text-left text-sm transition hover:bg-slate-900/70 ${
-                    isSelected ? "bg-slate-900/80" : "bg-transparent"
-                  }`}
+                  variant="outline"
+                  className="w-fit border-rose-500/40 text-rose-200 hover:bg-rose-500/10"
+                  onClick={() => refetch()}
                 >
-                  <span className="col-span-4 flex items-center gap-3">
-                    <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-slate-800 text-sm font-semibold text-slate-100">
-                      {driver.image ? (
-                        <img
-                          src={driver.image}
-                          alt={driver.name}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        getInitials(driver.name)
-                      )}
-                    </span>
-                    <span>
-                      <span className="block font-medium text-slate-100">
-                        {driver.name}
+                  Retry
+                </Button>
+              </div>
+            )}
+            {!isInitialLoading && !isError && filteredDrivers.length === 0 && (
+              <div className="px-4 py-6 text-sm text-slate-400">
+                No drivers found.
+              </div>
+            )}
+            {!isInitialLoading &&
+              !isError &&
+              filteredDrivers.map((driver) => {
+                const isSelected = driver.id === selectedId;
+                return (
+                  <button
+                    key={driver.id || driver.phone}
+                    type="button"
+                    onClick={() => setSelectedId(driver.id || driver.phone)}
+                    className={`grid w-full grid-cols-12 items-center gap-2 border-b border-slate-900 px-4 py-3 text-left text-sm transition hover:bg-slate-900/70 ${
+                      isSelected ? "bg-slate-900/80" : "bg-transparent"
+                    }`}
+                  >
+                    <span className="col-span-4 flex items-center gap-3">
+                      <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-slate-800 text-sm font-semibold text-slate-100">
+                        {driver.image ? (
+                          <img
+                            src={driver.image}
+                            alt={driver.name || "Driver"}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          getInitials(driver.name || "—")
+                        )}
                       </span>
-                      <span className="text-xs text-slate-500">
-                        {driver.id}
+                      <span>
+                        <span className="block font-medium text-slate-100">
+                          {driver.name || "—"}
+                        </span>
+                        <span className="text-xs text-slate-500">
+                          {driver.id || "—"}
+                        </span>
                       </span>
                     </span>
-                  </span>
-                  <span className="col-span-3 text-slate-300">
-                    {driver.phone}
-                  </span>
-                  <span className="col-span-2 text-slate-400">
-                    {driver.country}
-                  </span>
-                  <span className="col-span-1">
-                    <span
-                      className={`rounded-full border px-2 py-0.5 text-xs ${
-                        categoryStyles[driver.category]
-                      }`}
-                    >
-                      {driver.category}
+                    <span className="col-span-3 text-slate-300">
+                      {driver.phone || "—"}
                     </span>
-                  </span>
-                  <span className="col-span-2 text-right text-xs text-slate-400">
-                    {driver.lastSeenLabel ?? driver.lastSeen}
-                  </span>
-                </button>
-              );
-            })}
+                    <span className="col-span-2 text-slate-400">
+                      {driver.country || "—"}
+                    </span>
+                    <span className="col-span-1">
+                      <span
+                        className={`rounded-full border px-2 py-0.5 text-xs ${
+                          categoryStyles[driver.category] ||
+                          "border-slate-700 text-slate-400"
+                        }`}
+                      >
+                        {driver.category || "—"}
+                      </span>
+                    </span>
+                    <span className="col-span-2 text-right text-xs text-slate-400">
+                      {driver.lastSeenLabel ?? driver.lastSeen ?? "—"}
+                    </span>
+                  </button>
+                );
+              })}
+            {isLoadingMore && (
+              <div className="px-4 py-4 text-xs text-slate-400">
+                Loading more drivers…
+              </div>
+            )}
           </div>
 
           <div className="sticky bottom-0 flex items-center justify-between border-t border-slate-800 bg-slate-950/95 px-4 py-3 text-sm text-slate-400 backdrop-blur">
             <span>Total drivers: {totalDrivers}</span>
+            {hasMore && !isError && (
+              <Button
+                type="button"
+                variant="outline"
+                className="border-slate-700 text-slate-200 hover:bg-slate-900/60"
+                onClick={() => setPage((prev) => prev + 1)}
+                disabled={isFetching}
+              >
+                {isFetching ? "Loading…" : "Load more"}
+              </Button>
+            )}
             <button
               type="button"
               onClick={() => openModal("add")}
@@ -538,16 +493,17 @@ export default function Drivers() {
                   </div>
                   <div>
                     <p className="text-lg font-semibold text-slate-100">
-                      {selectedDriver.name}
+                      {selectedDriver.name || "—"}
                     </p>
                     <p className="text-sm text-slate-400">
-                      {selectedDriver.id} · {selectedDriver.route || "—"}
+                      {selectedDriver.id || "—"} · {selectedDriver.route || "—"}
                     </p>
                   </div>
                 </div>
                 <span
                   className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-                    statusStyles[selectedDriver.status]
+                    statusStyles[selectedDriver.status] ||
+                    "border-slate-700 bg-slate-800 text-slate-200"
                   }`}
                 >
                   {selectedDriver.status === "active" ? "Active" : "Inactive"}
@@ -557,7 +513,7 @@ export default function Drivers() {
               <div className="grid gap-3 rounded-xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-300">
                 <div className="flex items-center gap-3">
                   <Phone className="h-4 w-4 text-slate-500" />
-                  {selectedDriver.phone}
+                  {selectedDriver.phone || "—"}
                 </div>
                 <div className="flex items-center gap-3">
                   <Mail className="h-4 w-4 text-slate-500" />
@@ -569,7 +525,10 @@ export default function Drivers() {
                 </div>
                 <div className="flex items-center gap-3">
                   <CalendarClock className="h-4 w-4 text-slate-500" />
-                  Last seen {selectedDriver.lastSeenLabel ?? selectedDriver.lastSeen}
+                  Last seen{" "}
+                  {selectedDriver.lastSeenLabel ??
+                    selectedDriver.lastSeen ??
+                    "—"}
                 </div>
               </div>
 

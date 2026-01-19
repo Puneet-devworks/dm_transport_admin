@@ -1,15 +1,21 @@
-const DRIVERS_API_URL =
-  "http://127.0.0.1:5001/dmtransport-1/northamerica-northeast1/api/admin/fetchUsers";
+const BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ??
+  "https://northamerica-northeast1-dmtransport-1.cloudfunctions.net/api/admin";
+
+const DRIVERS_API_URL = `${BASE_URL}/fetchusers`;
 
 function mapDriver(user) {
-  const lastSeenSeconds = user?.lastSeen?._seconds;
-  const lastSeen = lastSeenSeconds
-    ? new Date(lastSeenSeconds * 1000)
-    : null;
+  const lastSeenSeconds = user?.lastSeen?._seconds ?? user?.lastSeen?.seconds;
+  const lastSeen =
+    typeof lastSeenSeconds === "number"
+      ? new Date(lastSeenSeconds * 1000)
+      : user?.lastSeen
+        ? new Date(user.lastSeen)
+        : null;
 
   return {
-    id: user?.userid || user?.phone || "",
-    name: user?.name || "Unknown driver",
+    id: user?.userid || user?.userId || user?.phone || "",
+    name: user?.name || "",
     phone: user?.phone || "",
     country: user?.country || "",
     category: user?.category || "",
@@ -17,18 +23,45 @@ function mapDriver(user) {
     lastSeen,
     email: user?.email || "",
     location: user?.location || "",
-    route: user?.route || "",
+    route: user?.route || user?.currentRoute || "",
     loadsCompleted: user?.loadsCompleted ?? null,
     rating: user?.rating ?? null,
     complianceScore: user?.complianceScore ?? null,
     maintenanceChat: Boolean(user?.maintenanceChat),
-    image: user?.image || "",
+    image:
+      user?.profilePic ||
+      user?.profilepic ||
+      user?.avatar ||
+      user?.image ||
+      "",
   };
 }
 
-export async function fetchDrivers() {
+function normalizeDriverResponse(data) {
+  if (Array.isArray(data)) {
+    return { users: data, pagination: {} };
+  }
+
+  if (!data || typeof data !== "object") {
+    return { users: [], pagination: {} };
+  }
+
+  const users =
+    data.users || data.data || data.results || data.payload?.users || [];
+  const pagination =
+    data.pagination || data.pageInfo || data.meta?.pagination || {};
+
+  return { users: Array.isArray(users) ? users : [], pagination };
+}
+
+export async function fetchDrivers({ page = 1, limit = 20, search = "" } = {}) {
   const token = localStorage.getItem("adminToken");
-  const response = await fetch(DRIVERS_API_URL, {
+  const params = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+    search,
+  });
+  const response = await fetch(`${DRIVERS_API_URL}?${params.toString()}`, {
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -40,5 +73,10 @@ export async function fetchDrivers() {
   }
 
   const data = await response.json();
-  return (data?.users ?? []).map(mapDriver);
+  const { users, pagination } = normalizeDriverResponse(data);
+
+  return {
+    users: users.map(mapDriver),
+    pagination: pagination || {},
+  };
 }
